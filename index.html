@@ -791,7 +791,7 @@
         function getCardBackground(versions) {
             const activeColors = versions.map(v => VERSION_COLORS[v]).filter(Boolean);
             
-            if (activeColors.length === 0) return 'bg-white';
+            if (activeColors.length === 0) return 'background-color: #ffffff;'; // 修正: 回傳 CSS 樣式
             if (activeColors.length === 1) return `background-color: ${activeColors[0]};`;
             
             if (activeColors.length === 2) {
@@ -800,7 +800,7 @@
             if (activeColors.length === 3) {
                 return `background: linear-gradient(90deg, ${activeColors[0]} 33.3%, ${activeColors[1]} 33.3% 66.6%, ${activeColors[2]} 66.6%);`;
             }
-            return 'bg-white';
+            return 'background-color: #ffffff;'; // 修正: 回傳 CSS 樣式
         }
 
         /**
@@ -842,7 +842,7 @@
             card.dataset.id = customer.id;
             
             // (Feature 4) 設定背景色
-            card.style = getCardBackground(customer.versions);
+            card.setAttribute('style', getCardBackground(customer.versions)); // 修正: 使用 setAttribute
 
             let expiryDate = null;
             if (customer.startIssueVersion && customer.startIssue && customer.subscriptionYears) {
@@ -1360,3 +1360,4 @@
     </script>
 </body>
 </html>
+
