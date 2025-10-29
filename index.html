@@ -329,6 +329,20 @@
                     </button>
                 </div>
             </form>
+            
+            <!-- (新功能) 通話記錄 -->
+            <div id="call-log-section" class="p-6 pt-0 hidden">
+                <div class="flex justify-between items-center mt-4 mb-3">
+                    <h3 class="text-lg font-medium text-gray-800">通話記錄</h3>
+                    <button type="button" id="add-call-log-btn" class="px-3 py-1 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">
+                        新增記錄
+                    </button>
+                </div>
+                <div id="call-log-list" class="space-y-3 max-h-48 overflow-y-auto bg-gray-100 p-3 rounded-md border">
+                    <!-- 通話記錄會顯示在這裡 -->
+                    <p id="no-call-logs" class="text-gray-500 text-center">尚無通話記錄</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -379,6 +393,55 @@
             </svg>
             <span class="text-gray-700">AI 讀取中...</span>
          </div>
+    </div>
+
+    <!-- (新功能) 8. 新增通話記錄 彈出視窗 (Modal) -->
+    <div id="call-log-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('call-log-modal')">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
+            <form id="call-log-form" class="p-6 space-y-4">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">新增通話記錄</h2>
+                <div>
+                    <label for="call-log-date" class="block text-sm font-medium text-gray-700">日期</label>
+                    <input type="date" id="call-log-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="call-log-follow-up" class="block text-sm font-medium text-gray-700">下次追蹤時間 (可選)</label>
+                    <input type="date" id="call-log-follow-up" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="call-log-notes" class="block text-sm font-medium text-gray-700">備註</label>
+                    <textarea id="call-log-notes" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" class="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300" onclick="hideModal('call-log-modal')">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700">
+                        儲存記錄
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- (新功能) 9. 追蹤提醒 彈出視窗 (Modal) -->
+    <div id="follow-up-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('follow-up-modal')">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
+            <div class="p-6">
+                 <div class="flex items-center space-x-3 mb-4">
+                     <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                     </div>
+                    <h3 class="text-lg font-medium text-gray-900">今日追蹤提醒</h3>
+                 </div>
+                <div id="follow-up-list" class="text-sm text-gray-600 mb-6 max-h-60 overflow-y-auto space-y-2">
+                    <!-- 提醒列表 -->
+                </div>
+                <button class="w-full px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="hideModal('follow-up-modal')">
+                    我知道了
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- 
@@ -457,6 +520,13 @@
         const ocrFileInput = $('#ocr-file-input');
         const ocrStatus = $('#ocr-status');
         const loadingOverlay = $('#loading-overlay');
+        
+        // (新功能) 通話記錄 DOM
+        const callLogSection = $('#call-log-section');
+        const addCallLogBtn = $('#add-call-log-btn');
+        const callLogList = $('#call-log-list');
+        const noCallLogs = $('#no-call-logs');
+        const callLogForm = $('#call-log-form');
 
         // --- PWA 功能 (動態產生 Manifest 和 Service Worker) ---
 
@@ -658,6 +728,7 @@
             }
             renderCustomers();
             updateTrashCount();
+            checkFollowUps(); // (新功能) 檢查追蹤
         }
         
         /** 儲存資料 */
@@ -782,6 +853,65 @@
             // 如果到期日在未來5個月內，且尚未到期
             return expiryDate <= fiveMonthsFromNow && expiryDate > now;
         }
+
+        // (新功能) 檢查今日追蹤
+        function checkFollowUps() {
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            let reminders = [];
+            
+            customers.forEach(customer => {
+                if (customer.callLogs && customer.callLogs.length > 0) {
+                    customer.callLogs.forEach(log => {
+                        if (log.followUp === today) {
+                            reminders.push({
+                                name: customer.name,
+                                notes: log.notes
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (reminders.length > 0) {
+                const followUpList = $('#follow-up-list');
+                followUpList.innerHTML = '';
+                reminders.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-gray-50 rounded-md border';
+                    item.innerHTML = `<p class="font-semibold text-gray-800">${r.name}</p><p class="text-gray-600 whitespace-pre-wrap">${r.notes || '無備註'}</p>`;
+                    followUpList.appendChild(item);
+                });
+                showModal('follow-up-modal');
+            }
+        }
+
+        // (新功能) 渲染通話記錄列表
+        function renderCallLogs(logs) {
+            callLogList.innerHTML = ''; // 清空
+            
+            if (!logs || logs.length === 0) {
+                callLogList.appendChild(noCallLogs); // noCallLogs 是一個 DOM 元素, 所以會被移動
+                noCallLogs.classList.remove('hidden');
+            } else {
+                noCallLogs.classList.add('hidden');
+                // 排序，最新的在最上面
+                const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                sortedLogs.forEach(log => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-white rounded-md border shadow-sm';
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-medium text-gray-800">${log.date}</span>
+                            ${log.followUp ? `<span class="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">追蹤: ${log.followUp}</span>` : ''}
+                        </div>
+                        <p class="text-sm text-gray-700 whitespace-pre-wrap">${log.notes || '無備註'}</p>
+                    `;
+                    callLogList.appendChild(item);
+                });
+            }
+        }
+
 
         // --- 客戶卡片渲染 (Render) ---
         
@@ -1090,6 +1220,7 @@
             notesEditor.innerHTML = ''; // 清空備註
             $('#expiry-date-display').textContent = '-';
             modalTitle.textContent = '新增客戶';
+            callLogSection.classList.add('hidden'); // (新功能) 隱藏通話記錄
             showModal('customer-modal');
         }
 
@@ -1121,6 +1252,11 @@
             notesEditor.innerHTML = customer.notes || ''; // 填充備註
             
             calculateExpiryDate(); // 重新計算一次
+            
+            // (新功能) 顯示並渲染通話記錄
+            callLogSection.classList.remove('hidden');
+            renderCallLogs(customer.callLogs);
+            
             showModal('customer-modal');
         }
 
@@ -1143,6 +1279,15 @@
                 return;
             }
             
+            // (新功能) 保存舊的通話記錄 (僅在編輯時)
+            let existingCallLogs = [];
+            if (editingCustomerId) {
+                const existingCustomer = customers.find(c => c.id == editingCustomerId);
+                if (existingCustomer) {
+                    existingCallLogs = existingCustomer.callLogs || [];
+                }
+            }
+            
             const customerData = {
                 id: editingCustomerId ? Number(editingCustomerId) : Date.now(),
                 name: name,
@@ -1154,7 +1299,8 @@
                 startIssueVersion: $('#start-issue-version').value,
                 startIssue: $('#start-issue').value,
                 subscriptionYears: $('#subscription-years').value,
-                notes: notesEditor.innerHTML
+                notes: notesEditor.innerHTML,
+                callLogs: existingCallLogs // (新功能)
             };
 
             if (editingCustomerId) {
@@ -1171,6 +1317,39 @@
             saveData();
             renderCustomers();
             hideModal('customer-modal');
+        }
+
+        // (新功能) 開啟新增通話記錄 Modal
+        function openCallLogModal() {
+            callLogForm.reset();
+            // 預設當日
+            $('#call-log-date').value = new Date().toISOString().split('T')[0];
+            showModal('call-log-modal');
+        }
+
+        // (新功能) 儲存通話記錄
+        function handleCallLogSubmit(e) {
+            e.preventDefault();
+            if (!editingCustomerId) return;
+            
+            const customer = customers.find(c => c.id == editingCustomerId);
+            if (!customer) return;
+
+            if (!customer.callLogs) {
+                customer.callLogs = [];
+            }
+            
+            const newLog = {
+                date: $('#call-log-date').value,
+                followUp: $('#call-log-follow-up').value,
+                notes: $('#call-log-notes').value
+            };
+            
+            customer.callLogs.push(newLog);
+            
+            saveData();
+            renderCallLogs(customer.callLogs);
+            hideModal('call-log-modal');
         }
 
         // --- 搜尋 (Feature 8) ---
@@ -1350,7 +1529,11 @@
             // 10. 文字高亮
             setupHighlighting();
             
-            // 11. (Feature 3) 出生年月日格式
+            // 11. (新功能) 通話記錄
+            addCallLogBtn.addEventListener('click', openCallLogModal);
+            callLogForm.addEventListener('submit', handleCallLogSubmit);
+            
+            // 12. (Feature 3) 出生年月日格式
             // 這裡可以加入 input masking，但為了簡單起見，暫時省略
         }
         
@@ -1360,4 +1543,5 @@
     </script>
 </body>
 </html>
+
 
