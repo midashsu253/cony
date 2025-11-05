@@ -1,1548 +1,1266 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>兔兔資料管理</title>
-    
-    <!-- 1. 載入 Tailwind CSS -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>客戶管理（含小朋友名字 + 匯入/匯出）</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. PWA Manifest (將由 JS 動態填入 href) -->
+
     <link rel="manifest" href="">
-    
-    <!-- 3. PWA 的 iOS/Safari 設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="兔兔管理">
-    
-    <!-- PWA 圖示 (使用佔位符) -->
-    <link rel="apple-touch-icon" href="https://placehold.co/180x180/7C3AED/FFFFFF?text=CRM&font=inter">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://placehold.co/192x192/7C3AED/FFFFFF?text=CRM&font=inter">
-    <link rel="icon" type="image/png" sizes="512x512" href="https://placehold.co/512x512/7C3AED/FFFFFF?text=CRM&font=inter">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="可愛兔兔" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- 4. Google 字型 -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-
-    <!-- 5. 應用程式的 CSS 樣式 -->
     <style>
-        /* 使用 Noto Sans TC 作為主要字型 */
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            -webkit-tap-highlight-color: transparent; /* 移除點擊高亮 */
-        }
-        
-        /* 隱藏滾動條 */
-        ::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* 確保在 iOS 獨立模式下內容填滿全螢幕 */
-        html, body {
-            height: 100%;
-            overflow: hidden;
-        }
-        
-        /* 應用程式主畫面滾動 */
-        #app-screen {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        #main-content {
-            flex-grow: 1;
-            overflow-y: auto; /* 只有主要內容區域可以滾動 */
-        }
-
-        /* 客戶卡片拖曳樣式 */
-        .customer-card.dragging {
-            opacity: 0.5;
-            border: 2px dashed #9ca3af;
-        }
-        
-        /* 拖曳經過垃圾桶時的樣式 */
-        #trash-bin.drag-over {
-            transform: scale(1.1);
-            background-color: #fecaca; /* 淺紅色 */
-        }
-        
-        /* 彈出視窗動畫 */
-        .modal {
-            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-        }
-        .modal-content {
-            transition: transform 0.2s ease-in-out;
-        }
-        .modal.hidden .modal-content {
-            transform: scale(0.95);
-        }
-        
-        /* 筆記編輯器樣式 */
-        [contenteditable="true"] {
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            padding: 0.5rem 0.75rem;
-            min-height: 100px;
-            background-color: white;
-        }
-        [contenteditable="true"]:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 2px #c7d2fe;
-        }
-        
-        /* 自訂高亮顏色 */
-        .highlight-yellow { background-color: #fef08a; }
-        .highlight-green { background-color: #bbf7d0; }
-        .highlight-blue { background-color: #bfdbfe; }
-        .highlight-pink { background-color: #fbcfe8; }
-        
-        /* 移除 input[type=date] 的預設圖示 (雖然我們用 text) */
-        input[type="text"]::-webkit-calendar-picker-indicator {
-            display: none;
-            -webkit-appearance: none;
-        }
+        body { font-family: 'Inter','Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { display: none; }
+        html, body { height: 100%; overflow: hidden; }
+        #app-screen { height: 100vh; display:flex; flex-direction:column; }
+        #main-content { flex-grow:1; overflow-y:auto; }
+        .customer-card.dragging { opacity:0.5; border:2px dashed #9ca3af; }
+        #trash-bin.drag-over { transform:scale(1.05); background-color:#fecaca; }
+        .modal { transition: opacity .2s ease-in-out, visibility .2s ease-in-out; }
+        .modal-content { transition: transform .2s ease-in-out; }
+        .modal.hidden .modal-content { transform: scale(0.98); }
+        [contenteditable="true"] { border:1px solid #d1d5db; border-radius:.375rem; padding:.5rem .75rem; min-height:100px; background-color:#fff; }
+        [contenteditable="true"]:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 2px #c7d2fe; }
     </style>
+
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="pwa-icon.png">
 </head>
 <body class="bg-gray-100 antialiased overflow-hidden">
 
-    <!-- SVG 圖示庫 (用於 UI) -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-        <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </symbol>
-        <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-        </symbol>
-        <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </symbol>
-        <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-        </symbol>
-        <symbol id="icon-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
-        </symbol>
-        <symbol id="icon-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-             <path d="M17 6.1H7a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1Z"/>
-             <path d="M12 18v-7" />
-             <path d="M9 11h6" />
-        </symbol>
-        <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </symbol>
-        <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
-        </symbol>
-        <symbol id="icon-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 12v-2a4 4 0 0 1 4-4h13m0 0v6m0-6-6 6"></path><path d="M21 12v2a4 4 0 0 1-4 4H4m0 0v-6m0 6 6-6"></path>
-        </symbol>
-    </svg>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><line x1="21" y1="21" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="icon-export" viewBox="0 0 24 24"><path d="M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="icon-import" viewBox="0 0 24 24"><path d="M12 21V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 17l-4 4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="icon-restore" viewBox="0 0 24 24"><path d="M3 12v-2a4 4 0 0 1 4-4h13" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/></symbol>
+</svg>
 
-    <!-- 1. 登入/設定密碼畫面 -->
-    <div id="login-screen" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-            <h2 id="login-title" class="text-2xl font-bold text-center text-gray-800 mb-4">歡迎使用</h2>
-            <form id="login-form">
-                <p id="login-message" class="text-center text-gray-600 mb-4">請設定您的 6 位數密碼</p>
-                <input type="password" id="password-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="w-full px-4 py-3 text-center text-2xl tracking-[.5em] border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" required>
-                <input type="password" id="password-confirm" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="w-full px-4 py-3 mt-3 text-center text-2xl tracking-[.5em] border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" placeholder="請再次確認">
-                
-                <button type="submit" id="login-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg mt-6 transition duration-200">
-                    設定密碼
-                </button>
-            </form>
-            <p id="login-error" class="text-red-500 text-center mt-3 hidden"></p>
+<div id="login-screen" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+    <h2 id="login-title" class="text-2xl font-bold text-center text-gray-800 mb-4">歡迎使用</h2>
+    <form id="login-form">
+      <p id="login-message" class="text-center text-gray-600 mb-4">請設定您的 6 位數密碼</p>
+      <input type="password" id="password-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="w-full px-4 py-3 text-center text-2xl tracking-[.5em] border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" required>
+      <input type="password" id="password-confirm" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="w-full px-4 py-3 mt-3 text-center text-2xl tracking-[.5em] border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" placeholder="請再次確認">
+      <button type="submit" id="login-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg mt-6 transition duration-200">設定密碼</button>
+    </form>
+    <p id="login-error" class="text-red-500 text-center mt-3 hidden"></p>
+  </div>
+</div>
+
+<div id="app-screen" class="hidden">
+  <header class="bg-white shadow-md sticky top-0 z-30">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-xl font-bold text-indigo-700">可愛兔兔</h1>
+      <div class="flex items-center space-x-2">
+        <button id="add-customer-btn" class="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition" title="新增客戶">
+          <svg class="w-6 h-6"><use href="#icon-plus"></use></svg>
+        </button>
+        <div class="ml-2 flex items-center gap-2">
+          <input type="number" min="0" id="global-reminder-months" placeholder="月數" class="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+          <button id="save-reminder-months" type="button" class="px-3 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 text-sm">儲存</button>
         </div>
-    </div>
 
-    <!-- 2. 應用程式主畫面 -->
-    <div id="app-screen" class="hidden">
-        <!-- 頂部導覽列 -->
-        <header class="bg-white shadow-md sticky top-0 z-30">
-            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-                <h1 class="text-xl font-bold text-indigo-700">客戶管理</h1>
-                <div class="flex items-center space-x-2">
-                    <!-- 新增客戶按鈕 -->
-                    <button id="add-customer-btn" class="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-plus"></use></svg>
-                    </button>
-                    <!-- 垃圾桶按鈕 -->
-                    <button id="open-trash-btn" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition relative">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
-                        <span id="trash-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden"></span>
-                    </button>
-                </div>
-            </div>
-            <!-- 搜尋列 -->
-            <div class="px-4 pb-3">
-                <div class="relative">
-                    <input type="search" id="search-bar" placeholder="搜尋姓名、電話、地址..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent">
-                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-search"></use></svg>
-                    </div>
-                </div>
-            </div>
-        </header>
 
-        <!-- 主要內容區域 (客戶網格) -->
-        <main id="main-content" class="flex-grow p-4">
-            <div id="customer-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                <!-- 客戶卡片將由 JS 動態插入 -->
-            </div>
-            <p id="no-customers" class="text-center text-gray-500 mt-10 hidden">目前沒有客戶資料。<br>請點擊右上角的 [+] 新增。</p>
-        </main>
+        <button id="export-btn" class="p-2 rounded-full text-green-600 hover:bg-green-100 transition" title="匯出 JSON">
+          <svg class="w-6 h-6"><use href="#icon-export"></use></svg>
+        </button>
+
+        <label for="import-input" id="import-btn" class="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition cursor-pointer" title="匯入 JSON">
+          <svg class="w-6 h-6"><use href="#icon-import"></use></svg>
+        </label>
+        <input type="file" id="import-input" accept="application/json" class="hidden" />
         
-        <!-- 底部垃圾桶 (僅在拖曳時顯示) -->
-        <footer id="trash-bin" class="bg-red-100 border-t-2 border-red-300 p-6 text-center text-red-700 fixed bottom-0 left-0 right-0 z-20 transition-all duration-300 transform translate-y-full">
-            <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
-            <p class="font-semibold mt-1">拖曳到此處刪除</p>
-        </footer>
+        <button id="open-trash-btn" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition relative" title="垃圾桶">
+          <svg class="w-6 h-6"><use href="#icon-trash"></use></svg>
+          <span id="trash-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden"></span>
+        </button>
+      </div>
     </div>
 
-    <!-- 3. 新增/編輯客戶 彈出視窗 (Modal) -->
-    <div id="customer-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-40 flex items-center justify-center p-4 hidden" onclick="hideModal('customer-modal')">
-        <div class="modal-content bg-gray-50 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-            <form id="customer-form" class="p-6 space-y-4">
-                <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">新增客戶</h2>
-                
-                <!-- 基本資料 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700">名字*</label>
-                        <input type="text" id="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                    </div>
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-gray-700">電話* (主要索引)</label>
-                        <input type="tel" id="phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="customer-id" class="block text-sm font-medium text-gray-700">客戶編號</label>
-                        <input type="text" id="customer-id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                     <div>
-                        <label for="dob" class="block text-sm font-medium text-gray-700">出生年月日</label>
-                        <input type="text" id="dob" placeholder="例如: 1990/05/20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label for="address" class="block text-sm font-medium text-gray-700">地址</label>
-                    <input type="text" id="address" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                
-                <!-- 版本 (Feature 4) -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">訂閱版本</label>
-                    <div class="mt-2 grid grid-cols-3 gap-3">
-                        <label for="ver-60107" class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
-                            <input type="checkbox" id="ver-60107" value="60107" class="form-version rounded text-indigo-600 focus:ring-indigo-500">
-                            <span style="color: #6d5f3b;">學前版 (米)</span>
-                        </label>
-                         <label for="ver-60108" class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
-                            <input type="checkbox" id="ver-60108" value="60108" class="form-version rounded text-indigo-600 focus:ring-indigo-500">
-                            <span style="color: #166534;">初階版 (綠)</span>
-                        </label>
-                         <label for="ver-60109" class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
-                            <input type="checkbox" id="ver-60109" value="60109" class="form-version rounded text-indigo-600 focus:ring-indigo-500">
-                            <span style="color: #5b21b6;">進階版 (紫)</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- 訂閱期數 (Feature 5 & 6) -->
-                <div class="bg-gray-100 p-4 rounded-lg border border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-800 mb-3">訂閱方案</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="start-issue-version" class="block text-sm font-medium text-gray-700">開始版本</label>
-                            <select id="start-issue-version" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">請選擇</option>
-                                <option value="60107">學前版 (60107)</option>
-                                <option value="60108">初階版 (60108)</option>
-                                <option value="60109">進階版 (60109)</option>
-                            </select>
-                        </div>
-                         <div>
-                            <label for="start-issue" class="block text-sm font-medium text-gray-700">開始期數</label>
-                            <input type="number" id="start-issue" placeholder="例如: 154" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                         <label for="subscription-years" class="block text-sm font-medium text-gray-700">訂閱年數</label>
-                        <select id="subscription-years" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="0">無</option>
-                            <option value="0.5">半年</option>
-                            <option value="1">1 年</option>
-                            <option value="2">2 年</option>
-                            <option value="3">3 年</option>
-                            <option value="4">4 年</option>
-                            <option value="5">5 年</option>
-                        </select>
-                    </div>
-                    <div class="mt-4 p-3 bg-white rounded-md border border-gray-300">
-                        <p class="text-sm font-medium text-gray-700">預計到期日:</p>
-                        <p id="expiry-date-display" class="text-lg font-bold text-indigo-700">-</p>
-                    </div>
-                </div>
-
-                <!-- 拍照轉文字 (Feature 9) -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">備註 (可拍照或手寫轉文字)</label>
-                    <div class="flex items-center space-x-2 mb-2">
-                        <button type="button" id="ocr-camera-btn" class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-camera"></use></svg>
-                            拍照/上傳
-                        </button>
-                        <input type="file" id="ocr-file-input" accept="image/*" class="hidden">
-                        
-                        <button type="button" id="ocr-handwriting-btn" class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-edit"></use></svg>
-                            (手寫功能開發中)
-                        </button>
-                    </div>
-                    <p id="ocr-status" class="text-sm text-indigo-600 text-center hidden"></p>
-                </div>
-                
-                <!-- 文字高亮 (Feature 11) -->
-                <div id="highlight-toolbar" class="bg-gray-200 p-1 rounded-md flex space-x-1 hidden">
-                    <button type="button" data-color="#fef08a" class="highlight-btn w-6 h-6 rounded bg-yellow-200 border border-yellow-300"></button>
-                    <button type="button" data-color="#bbf7d0" class="highlight-btn w-6 h-6 rounded bg-green-200 border border-green-300"></button>
-                    <button type="button" data-color="#bfdbfe" class="highlight-btn w-6 h-6 rounded bg-blue-200 border border-blue-300"></button>
-                    <button type="button" data-color="#fbcfe8" class="highlight-btn w-6 h-6 rounded bg-pink-200 border border-pink-300"></button>
-                    <button type="button" data-color="transparent" class="highlight-btn w-6 h-6 rounded bg-white border border-gray-300 text-xs">清除</button>
-                </div>
-
-                <!-- 備註 -->
-                <div id="notes" contenteditable="true" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="點此輸入備註..."></div>
-
-                <!-- 表單按鈕 -->
-                <div class="flex justify-end space-x-3 pt-4">
-                    <button type="button" class="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300" onclick="hideModal('customer-modal')">
-                        取消
-                    </button>
-                    <button type="submit" class="px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                        儲存
-                    </button>
-                </div>
-            </form>
-            
-            <!-- (新功能) 通話記錄 -->
-            <div id="call-log-section" class="p-6 pt-0 hidden">
-                <div class="flex justify-between items-center mt-4 mb-3">
-                    <h3 class="text-lg font-medium text-gray-800">通話記錄</h3>
-                    <button type="button" id="add-call-log-btn" class="px-3 py-1 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">
-                        新增記錄
-                    </button>
-                </div>
-                <div id="call-log-list" class="space-y-3 max-h-48 overflow-y-auto bg-gray-100 p-3 rounded-md border">
-                    <!-- 通話記錄會顯示在這裡 -->
-                    <p id="no-call-logs" class="text-gray-500 text-center">尚無通話記錄</p>
-                </div>
-            </div>
+    <div class="px-4 pb-3">
+      <div class="relative">
+        <input type="search" id="search-bar" placeholder="搜尋姓名、電話、地址..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent">
+        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <svg class="w-5 h-5"><use href="#icon-search"></use></svg>
         </div>
-    </div>
+      </div>
 
-    <!-- 4. 垃圾桶彈出視窗 (Modal) -->
-    <div id="trash-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-40 flex items-center justify-center p-4 hidden" onclick="hideModal('trash-modal')">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md max-h-[70vh] flex flex-col" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-bold text-gray-800">垃圾桶</h2>
-                <button class="p-1 rounded-full hover:bg-gray-200" onclick="hideModal('trash-modal')">
-                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-close"></use></svg>
-                </button>
-            </div>
-            <div id="trash-list" class="flex-grow overflow-y-auto p-4 space-y-3">
-                <!-- 已刪除的項目將顯示於此 -->
-            </div>
-            <p id="no-trash" class="text-center text-gray-500 p-10 hidden">垃圾桶是空的</p>
-        </div>
+      <div class="px-4 pb-3 pt-3">
+        <label for="card-density" class="flex items-center justify-between text-sm text-gray-600 mb-1">
+          <span>卡片密度（每列卡片數）</span>
+          <span><span id="card-density-value" class="font-semibold text-indigo-600">4</span> / 10</span>
+        </label>
+        <input id="card-density" type="range" min="1" max="10" step="1" value="4" class="w-full accent-indigo-600">
+      </div>
     </div>
+  </header>
+
+  <main id="main-content" class="flex-grow p-4">
+    <div id="customer-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+    <p id="no-customers" class="text-center text-gray-500 mt-10 hidden">目前沒有客戶資料。<br>請點擊右上角的 [+] 新增。</p>
+  </main>
+
+  <footer id="trash-bin" class="bg-red-100 border-t-2 border-red-300 p-6 text-center text-red-700 fixed bottom-0 left-0 right-0 z-20 transition-all duration-300 transform translate-y-full">
+    <svg class="w-8 h-8 mx-auto"><use href="#icon-trash"></use></svg>
+    <p class="font-semibold mt-1">拖曳到此處刪除</p>
+  </footer>
+</div>
+
+<div id="customer-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-40 flex items-center justify-center p-4 hidden" onclick="hideModal('customer-modal')">
+  <div class="modal-content bg-gray-50 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <form id="customer-form" class="p-6 space-y-4">
+      <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">新增客戶</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700">名字*</label>
+          <input type="text" id="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+        </div>
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700">電話* (主要索引)</label>
+          <input type="tel" id="phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+        </div>
+      </div>
+
+      <div>
+        <label for="child-name" class="block text-sm font-medium text-gray-700">小朋友名字</label>
+        <input type="text" id="child-name" placeholder="例如：小明" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="dob" class="block text-sm font-medium text-gray-700">出生年月日</label>
+          <input type="text" id="dob" placeholder="例如: 1990/05/20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+      </div>
+      <div>
+        <label for="address" class="block text-sm font-medium text-gray-700">地址</label>
+        <input type="text" id="address" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+      </div>
+
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">訂閱版本</label>
+        <div class="mt-2 grid grid-cols-3 gap-3">
+          <label class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
+            <input type="checkbox" id="ver-60107" value="60107" class="form-version rounded text-indigo-600">
+            <span style="color:#6d5f3b">學前版 (米)</span>
+          </label>
+          <label class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
+            <input type="checkbox" id="ver-60108" value="60108" class="form-version rounded text-indigo-600">
+            <span style="color:#166534">初階版 (綠)</span>
+          </label>
+          <label class="flex items-center space-x-2 p-3 rounded-lg border border-gray-300 bg-white cursor-pointer">
+            <input type="checkbox" id="ver-60109" value="60109" class="form-version rounded text-indigo-600">
+            <span style="color:#5b21b6">進階版 (紫)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="bg-gray-100 p-4 rounded-lg border border-gray-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-3">訂閱方案</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="start-issue-version" class="block text-sm font-medium text-gray-700">開始版本</label>
+            <select id="start-issue-version" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+              <option value="">請選擇</option>
+              <option value="60107">學前版 (60107)</option>
+              <option value="60108">初階版 (60108)</option>
+              <option value="60109">進階版 (60109)</option>
+            </select>
+          </div>
+          <div>
+            <label for="start-issue" class="block text-sm font-medium text-gray-700">開始期數</label>
+            <input type="number" id="start-issue" placeholder="例如: 154" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label for="expiry-issue" class="block text-sm font-medium text-gray-700">到期期數</label>
+          <input type="number" id="expiry-issue" placeholder="例如: 168" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        </div>
+
+        <div class="mt-4 p-3 bg-white rounded-md border border-gray-300">
+          <p class="text-sm font-medium text-gray-700">預計到期日:</p>
+          <p id="expiry-date-display" class="text-lg font-bold text-indigo-700">-</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">備註 (可拍照或手寫轉文字)</label>
+        <div class="flex items-center space-x-2 mb-2">
+          <button type="button" id="ocr-camera-btn" class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            <svg class="w-5 h-5 mr-2"><use href="#icon-camera"></use></svg> 拍照/上傳
+          </button>
+          <input type="file" id="ocr-file-input" accept="image/*" class="hidden">
+          <button type="button" id="ocr-handwriting-btn" class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            (手寫功能開發中)
+          </button>
+        </div>
+        <p id="ocr-status" class="text-sm text-indigo-600 text-center hidden"></p>
+      </div>
+
+      <div id="highlight-toolbar" class="bg-gray-200 p-1 rounded-md flex space-x-1 hidden">
+        <button type="button" data-color="#fef08a" class="highlight-btn w-6 h-6 rounded bg-yellow-200 border border-yellow-300"></button>
+        <button type="button" data-color="#bbf7d0" class="highlight-btn w-6 h-6 rounded bg-green-200 border border-green-300"></button>
+        <button type="button" data-color="#bfdbfe" class="highlight-btn w-6 h-6 rounded bg-blue-200 border border-blue-300"></button>
+        <button type="button" data-color="#fbcfe8" class="highlight-btn w-6 h-6 rounded bg-pink-200 border border-pink-300"></button>
+        <button type="button" data-color="transparent" class="highlight-btn w-6 h-6 rounded bg-white border border-gray-300 text-xs">清除</button>
+      </div>
+
+      <div id="notes" contenteditable="true" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="點此輸入備註..."></div>
+
+      <div class="flex justify-end space-x-3 pt-4">
+        <button type="button" class="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300" onclick="hideModal('customer-modal')">取消</button>
+        <button type="submit" class="px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700">儲存</button>
+      </div>
+    </form>
+
+    <div id="call-log-section" class="p-6 pt-0 hidden">
+      <div class="flex justify-between items-center mt-4 mb-3">
+        <h3 class="text-lg font-medium text-gray-800">通話記錄</h3>
+        <button type="button" id="add-call-log-btn" class="px-3 py-1 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">新增記錄</button>
+      </div>
+      <div id="call-log-list" class="space-y-3 max-h-48 overflow-y-auto bg-gray-100 p-3 rounded-md border">
+        <p id="no-call-logs" class="text-gray-500 text-center">尚無通話記錄</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="trash-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-40 flex items-center justify-center p-4 hidden" onclick="hideModal('trash-modal')">
+  <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md max-h-[70vh] flex flex-col" onclick="event.stopPropagation()">
+    <div class="flex justify-between items-center p-4 border-b">
+      <h2 class="text-xl font-bold text-gray-800">垃圾桶</h2>
+      <button class="p-1 rounded-full hover:bg-gray-200" onclick="hideModal('trash-modal')"><svg class="w-6 h-6"><use href="#icon-restore"></use></svg></button>
+    </div>
+    <div id="trash-list" class="flex-grow overflow-y-auto p-4 space-y-3"></div>
+    <p id="no-trash" class="text-center text-gray-500 p-10 hidden">垃圾桶是空的</p>
+  </div>
+</div>
+
+<div id="undo-bar" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 transform translate-y-20 opacity-0 z-50">
+  <p id="undo-message" class="mr-4">已將客戶移至垃圾桶</p>
+  <button id="undo-btn" class="font-bold text-indigo-400 hover:text-indigo-300">復原</button>
+</div>
+
+<div id="alert-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('alert-modal')">
+  <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm" onclick="event.stopPropagation()">
+    <div class="p-6 text-center">
+      <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-7 h-7"><use href="#icon-restore"></use></svg>
+      </div>
+      <h3 id="alert-title" class="text-lg font-medium text-gray-900 mb-2">提醒</h3>
+      <p id="alert-message" class="text-sm text-gray-600 mb-6">訊息</p>
+      <button class="w-full px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="hideModal('alert-modal')">確定</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+    <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+    <span class="text-gray-700">AI 讀取中...</span>
+  </div>
+</div>
+
+<div id="call-log-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('call-log-modal')">
+  <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
+    <form id="call-log-form" class="p-6 space-y-4">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">新增通話記錄</h2>
+      <div>
+        <label for="call-log-date" class="block text-sm font-medium text-gray-700">日期</label>
+        <input type="date" id="call-log-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="call-log-follow-up" class="block text-sm font-medium text-gray-700">下次追蹤時間 (可選)</label>
+        <input type="date" id="call-log-follow-up" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="call-log-notes" class="block text-sm font-medium text-gray-700">備註</label>
+        <textarea id="call-log-notes" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+      </div>
+      <div class="flex justify-end space-x-3 pt-4">
+        <button type="button" class="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300" onclick="hideModal('call-log-modal')">取消</button>
+        <button type="submit" class="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700">儲存記錄</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="follow-up-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('follow-up-modal')">
+  <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
+    <div class="p-6">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+          <svg class="w-7 h-7"><use href="#icon-restore"></use></svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900">今日追蹤提醒</h3>
+      </div>
+      <div id="follow-up-list" class="text-sm text-gray-600 mb-6 max-h-60 overflow-y-auto space-y-2"></div>
+      <button class="w-full px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="hideModal('follow-up-modal')">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ====================
+   State & constants
+   ==================== */
+let customers = [];
+let trashedCustomers = [];
+let currentPassword = null;
+let loggedIn = false;
+let draggedElement = null;
+let editingCustomerId = null;
+let lastDeletedCustomer = null;
+let undoTimeout = null;
+
+const BASE_ISSUES = { '60107': 154, '60108': 549, '60109': 534 };
+const BASE_DATES = {
+  '60107': new Date('2025-10-01T00:00:00Z'),
+  '60108': new Date('2025-10-01T00:00:00Z'),
+  '60109': new Date('2025-10-01T00:00:00Z')
+};
+const VERSION_COLORS = { '60107': '#FFFBEB', '60108': '#F0FDF4', '60109': '#F5F3FF' };
+
+/* ====================
+   DOM shortcuts
+   ==================== */
+const $ = (s) => document.querySelector(s);
+
+const loginScreen = $('#login-screen');
+const appScreen = $('#app-screen');
+const loginForm = $('#login-form');
+const passwordInput = $('#password-input');
+const passwordConfirm = $('#password-confirm');
+const loginMessage = $('#login-message');
+const loginTitle = $('#login-title');
+const loginButton = $('#login-button');
+const loginError = $('#login-error');
+
+const customerGrid = $('#customer-grid');
+const noCustomersMsg = $('#no-customers');
+const searchBar = $('#search-bar');
+
+const trashBin = $('#trash-bin');
+const openTrashBtn = $('#open-trash-btn');
+const trashCount = $('#trash-count');
+
+const customerModal = $('#customer-modal');
+const modalTitle = $('#modal-title');
+const customerForm = $('#customer-form');
+
+const undoBar = $('#undo-bar');
+const undoBtn = $('#undo-btn');
+const undoMessage = $('#undo-message');
+
+const notesEditor = $('#notes');
+const highlightToolbar = $('#highlight-toolbar');
+
+const ocrFileInput = $('#ocr-file-input');
+const ocrStatus = $('#ocr-status');
+const loadingOverlay = $('#loading-overlay');
+
+const callLogSection = $('#call-log-section');
+const addCallLogBtn = $('#add-call-log-btn');
+const callLogList = $('#call-log-list');
+const noCallLogs = $('#no-call-logs');
+const callLogForm = $('#call-log-form');
+
+const cardDensity = $('#card-density');
+const cardDensityValue = $('#card-density-value');
+
+const importInput = $('#import-input');
+const exportBtn = $('#export-btn');
+
+/* ====================
+   PWA manifest & SW
+   ==================== */
+function generateManifestDataUri() {
+  const manifest = {
+    name: "客戶資料管理",
+    short_name: "客戶管理",
+    start_url: location.pathname,
+    display: "standalone",
+    background_color: "#f3f4f6",
+    theme_color: "#4f46e5",
+    icons: [
+      { src: "https://placehold.co/192x192/4f46e5/FFFFFF?text=CRM", type: "image/png", sizes: "192x192" },
+      { src: "https://placehold.co/512x512/4f46e5/FFFFFF?text=CRM", type: "image/png", sizes: "512x512" }
+    ]
+  };
+  try {
+    const manifestString = JSON.stringify(manifest);
+    const manifestBase64 = btoa(unescape(encodeURIComponent(manifestString)));
+    const dataUri = `data:application/json;base64,${manifestBase64}`;
+    document.querySelector('link[rel="manifest"]').setAttribute('href', dataUri);
+  } catch (e) {
+    console.error("建立 manifest 失敗:", e);
+  }
+}
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE_NAME = 'crm-pwa-cache-v1';
+      const urlsToCache = ['${location.pathname}', 'https://cdn.tailwindcss.com'];
+      self.addEventListener('install', event => event.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache))));
+      self.addEventListener('fetch', event => event.respondWith(caches.match(event.request).then(r => r || fetch(event.request))));
+    `;
+    try {
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).then(() => console.log('SW registered')).catch(e => console.warn('SW fail', e));
+    } catch (e) {
+      console.error('registerServiceWorker error', e);
+    }
+  }
+}
+
+/* ====================
+   Modal / Alerts
+   ==================== */
+window.showModal = (modalId) => {
+  const m = $(`#${modalId}`);
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); setTimeout(() => m.classList.add('opacity-100'), 10); }
+};
+window.hideModal = (modalId) => {
+  const m = $(`#${modalId}`);
+  if (m) { m.classList.remove('opacity-100'); setTimeout(() => { m.classList.add('hidden'); m.classList.remove('flex'); }, 200); }
+};
+window.showAlert = (message, title = '提醒') => {
+  $('#alert-title').textContent = title;
+  $('#alert-message').textContent = message;
+  showModal('alert-modal');
+};
+
+/* ====================
+   Auth
+   ==================== */
+function initAuth() {
+  currentPassword = localStorage.getItem('crm_password');
+  if (currentPassword) {
+    loginTitle.textContent = '請登入';
+    loginMessage.textContent = '請輸入您的 6 位數密碼';
+    passwordConfirm.classList.add('hidden');
+    loginButton.textContent = '登入';
+  } else {
+    loginTitle.textContent = '設定密碼';
+    loginMessage.textContent = '請設定您的 6 位數密碼';
+    passwordConfirm.classList.remove('hidden');
+    loginButton.textContent = '設定密碼';
+  }
+  loginError.classList.add('hidden');
+  passwordInput.focus();
+}
+
+function handleLoginSubmit(e) {
+  e.preventDefault();
+  loginError.classList.add('hidden');
+  const pass = passwordInput.value;
+  if (currentPassword) {
+    if (pass === currentPassword) {
+      loggedIn = true;
+      loginScreen.classList.add('hidden');
+      appScreen.classList.remove('hidden');
+      loadData();
+    } else {
+      loginError.textContent = '密碼錯誤，請重試。';
+      loginError.classList.remove('hidden');
+      passwordInput.value = '';
+    }
+  } else {
+    const confirmPass = passwordConfirm.value;
+    if (pass.length !== 6) { loginError.textContent = '密碼必須為 6 位數字。'; loginError.classList.remove('hidden'); return; }
+    if (pass !== confirmPass) { loginError.textContent = '兩次輸入的密碼不一致。'; loginError.classList.remove('hidden'); return; }
+    localStorage.setItem('crm_password', pass);
+    currentPassword = pass;
+    loggedIn = true;
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    loadData();
+  }
+}
+
+/* ====================
+   Persist / Load
+   ==================== */
+function saveData() {
+  if (!loggedIn) return;
+  try {
+    localStorage.setItem('crm_customers_order', JSON.stringify(customers));
+    localStorage.setItem('crm_trashed_customers', JSON.stringify(trashedCustomers));
+  } catch (e) {
+    console.error('saveData error', e);
+    showAlert('儲存資料時發生錯誤，您的變更可能無法保留。', '儲存失敗');
+  }
+}
+
+function loadData() {
+  if (!loggedIn) return;
+  try {
+    customers = JSON.parse(localStorage.getItem('crm_customers_order')) || [];
+    trashedCustomers = JSON.parse(localStorage.getItem('crm_trashed_customers')) || [];
+  } catch (e) {
+    console.error('loadData error', e);
+    customers = []; trashedCustomers = [];
+  }
+  renderCustomers();
+  updateTrashCount();
+  checkFollowUps();
+}
+
+/* ====================
+   Issue helpers
+   ==================== */
+function getIssueFromDate(version, targetDate) {
+  const baseDate = BASE_DATES[version];
+  const baseIssue = BASE_ISSUES[version];
+  const diffMonths = (targetDate.getFullYear() - baseDate.getFullYear()) * 12 + (targetDate.getMonth() - baseDate.getMonth());
+  if (version === '60107') return baseIssue + diffMonths;
+  if (version === '60108' || version === '60109') {
+    let issuesFromMonths = diffMonths * 2;
+    let dayAdjustment = (targetDate.getDate() >= 15) ? 1 : 0;
+    if (targetDate.getDate() === 1) dayAdjustment = 0;
+    return baseIssue + issuesFromMonths + dayAdjustment;
+  }
+  return 0;
+}
+
+function getDateFromIssue(version, issueNum) {
+  const baseDate = new Date(BASE_DATES[version].getTime());
+  const baseIssue = BASE_ISSUES[version];
+  const diffIssues = issueNum - baseIssue;
+  if (version === '60107') {
+    baseDate.setMonth(baseDate.getMonth() + diffIssues);
+    baseDate.setDate(1);
+    return baseDate;
+  } else if (version === '60108' || version === '60109') {
+    const monthsToAdd = Math.floor(diffIssues / 2);
+    const day = (diffIssues % 2 === 0) ? 1 : 15;
+    baseDate.setMonth(baseDate.getMonth() + monthsToAdd);
+    baseDate.setDate(day);
+    return baseDate;
+  }
+  return new Date();
+}
+
+function calculateExpiryDate() {
+  const version = $('#start-issue-version').value;
+  const issue = parseInt($('#start-issue').value, 10);
+  // 移除: const years = parseFloat($('#subscription-years').value);
+  const expiryIssue = document.querySelector('#expiry-issue') ? Number(document.querySelector('#expiry-issue').value) : null;
+
+  let displayDate = '-';
+  let calculatedExpiryDate = null;
+  
+  if (version && expiryIssue != null && Number.isFinite(expiryIssue)) {
+    // 優先使用手動輸入的到期期數計算
+    try {
+      calculatedExpiryDate = getDateFromIssue(version, expiryIssue);
+    } catch(e) {
+      console.error('calculateExpiryDate error using expiryIssue', e);
+    }
+  // 移除訂閱年數的計算邏輯
+  /* } else if (version && Number.isFinite(issue) && Number.isFinite(years) && years > 0) {
+    // 其次使用開始期數 + 訂閱年數計算 (保留原有邏輯，但建議主要使用 expiryIssue)
+    try {
+      const startDate = getDateFromIssue(version, issue);
+      calculatedExpiryDate = new Date(startDate.getTime());
+      calculatedExpiryDate.setMonth(calculatedExpiryDate.getMonth() + (years * 12));
+    } catch(e) {
+      console.error('calculateExpiryDate error using subscriptionYears', e);
+    } */
+  }
+  
+  if (calculatedExpiryDate) {
+    const yyyy = calculatedExpiryDate.getFullYear();
+    const mm = String(calculatedExpiryDate.getMonth() + 1).padStart(2,'0');
+    const dd = String(calculatedExpiryDate.getDate()).padStart(2,'0');
+    displayDate = `${yyyy}/${mm}/${dd}`;
+  }
+  
+  $('#expiry-date-display').textContent = displayDate;
+  return calculatedExpiryDate;
+}
+
+function isExpiryWarning(expiryDate) {
+  if (!expiryDate) return false;
+  const now = new Date();
+  const fiveMonthsFromNow = new Date();
+  fiveMonthsFromNow.setMonth(now.getMonth() + 5);
+  return expiryDate <= fiveMonthsFromNow && expiryDate > now;
+}
+
+/* ====================
+   Follow-ups & Call Logs
+   ==================== */
+function checkFollowUps() {
+  const today = new Date().toISOString().split('T')[0];
+  let reminders = [];
+  customers.forEach(customer => {
+    if (customer.callLogs && customer.callLogs.length) {
+      customer.callLogs.forEach(log => {
+        if (log.followUp === today) reminders.push({ name: customer.name, notes: log.notes });
+      });
+    }
+  });
+  if (reminders.length) {
+    const followUpList = $('#follow-up-list');
+    followUpList.innerHTML = '';
+    reminders.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'p-3 bg-gray-50 rounded-md border';
+      item.innerHTML = `<p class="font-semibold text-gray-800">${r.name}</p><p class="text-gray-600 whitespace-pre-wrap">${r.notes || '無備註'}</p>`;
+      followUpList.appendChild(item);
+    });
+    showModal('follow-up-modal');
+  }
+}
+
+// 根據「到期期數」與「今天」換算剩餘期數（依版別）
+// - 60107：每月 1 期（1 號）
+// - 60108 / 60109：每月 2 期（1 號、15 號）
+// 回傳 null 表示無法計算；否則回傳 >=0 的整數期數
+function getRemainingIssues(version, expiryIssue, refDate = new Date()) {
+  if (!version || !Number.isFinite(Number(expiryIssue))) return null;
+  try {
+    const currentIssue = getIssueFromDate(version, refDate);
+    return Math.max(0, Number(expiryIssue) - currentIssue);
+  } catch(e) {
+    console.warn('getRemainingIssues error', e);
+    return null;
+  }
+}
+
+
+function renderCallLogs(logs) {
+  callLogList.innerHTML = '';
+  if (!logs || logs.length === 0) {
+    callLogList.appendChild(noCallLogs);
+    noCallLogs.classList.remove('hidden');
+  } else {
+    noCallLogs.classList.add('hidden');
+    const sortedLogs = [...logs].sort((a,b)=> new Date(b.date) - new Date(a.date));
+    sortedLogs.forEach(log => {
+      const item = document.createElement('div');
+      item.className = 'p-3 bg-white rounded-md border shadow-sm';
+      item.innerHTML = `
+        <div class="flex justify-between items-center mb-1">
+          <span class="font-medium text-gray-800">${log.date}</span>
+          ${log.followUp ? `<span class="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">追蹤: ${log.followUp}</span>` : ''}
+        </div>
+        <p class="text-sm text-gray-700 whitespace-pre-wrap">${log.notes || '無備註'}</p>
+      `;
+      callLogList.appendChild(item);
+    });
+  }
+}
+
+/* ====================
+   Card rendering
+   ==================== */
+function getCardBackground(versions) {
+  const activeColors = (versions || []).map(v => VERSION_COLORS[v]).filter(Boolean);
+  if (activeColors.length === 0) return 'background-color: #ffffff;';
+  if (activeColors.length === 1) return `background-color: ${activeColors[0]};`;
+  if (activeColors.length === 2) return `background: linear-gradient(90deg, ${activeColors[0]} 50%, ${activeColors[1]} 50%);`;
+  if (activeColors.length === 3) return `background: linear-gradient(90deg, ${activeColors[0]} 33.3%, ${activeColors[1]} 33.3% 66.6%, ${activeColors[2]} 66.6%);`;
+  return 'background-color: #ffffff;';
+}
+
+function renderCustomers() {
+  if (!loggedIn) return;
+  customerGrid.innerHTML = '';
+  const filterText = (searchBar.value || '').toLowerCase();
+  const filteredCustomers = customers.filter(c => {
+    // 移除 customerId 在搜尋範圍內的檢查
+    const allData = [c.name, c.childName, c.phone, c.address, c.dob, c.notes].join(' ').toLowerCase();
+    return allData.includes(filterText);
+  });
+  if (filteredCustomers.length === 0) {
+    noCustomersMsg.classList.remove('hidden');
+  } else {
+    noCustomersMsg.classList.add('hidden');
+    filteredCustomers.forEach(customer => customerGrid.appendChild(createCustomerCard(customer)));
+  }
+  addDragDropListeners();
+}
+
+function createCustomerCard(customer) {
+  const card = document.createElement('div');
+  card.className = 'customer-card p-4 rounded-lg shadow-md cursor-move transition-all duration-200';
+  card.setAttribute('draggable', true);
+  card.dataset.id = customer.id;
+  card.setAttribute('style', getCardBackground(customer.versions || []));
+
+  // **********************************************
+  // 修正後的邏輯：只依賴 expiryIssue 來計算 expiryDate
+  // **********************************************
+  let expiryDate = null;
+  if (customer.startIssueVersion && customer.expiryIssue != null && Number.isFinite(Number(customer.expiryIssue))) {
+      try {
+          expiryDate = getDateFromIssue(customer.startIssueVersion, Number(customer.expiryIssue));
+      } catch (e) {
+          console.error('Error calculating card expiry date from expiryIssue:', e);
+          expiryDate = null;
+      }
+  }
+  // **********************************************
+
+  let warningHtml = '';
+  const in5MonthsWindow = expiryDate && isExpiryWarning(expiryDate);
+  let remainingIssueBadge = '';
+  if (in5MonthsWindow && customer.startIssueVersion && Number.isFinite(Number(customer.expiryIssue))) {
+    const remain = getRemainingIssues(customer.startIssueVersion, Number(customer.expiryIssue), new Date());
+    if (remain != null && remain > 0) {
+      remainingIssueBadge = `<span class="block text-[12px] font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded-full mb-2">剩餘 ${remain} 期</span>`;
+    }
+  }
+
+  if (expiryDate && isExpiryWarning(expiryDate)) {
+    warningHtml = `<span class="block text-sm font-bold text-pink-600 bg-pink-100 px-2 py-1 rounded-full mb-2">即將到期</span>`;
+    card.classList.add('border-2','border-pink-500','ring-2','ring-pink-200');
+  }
+
+  const childHtml = customer.childName ? ` <span class="text-indigo-600">👶 ${escapeHtml(customer.childName)}</span>` : '';
+  card.innerHTML = `
+    ${warningHtml}
+    ${remainingIssueBadge}
+    <h3 class="text-lg font-bold text-gray-800 truncate">${escapeHtml(customer.name)}${childHtml}</h3>
+    <p class="text-sm text-gray-600 mt-1 truncate">${escapeHtml(customer.phone || '')}</p>
+    <p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(customer.address || '') || '&nbsp;'}</p>
+  `;
+
+  card.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(customer.id); });
+
+  return card;
+}
+
+/* ====================
+   Drag & Drop + Trash
+   ==================== */
+function addDragDropListeners() {
+  const cards = document.querySelectorAll('.customer-card');
+  cards.forEach(card => {
+    card.removeEventListener('dragstart', handleDragStart);
+    card.removeEventListener('dragend', handleDragEnd);
+    card.removeEventListener('dragover', handleDragOver);
+    card.removeEventListener('drop', handleDropOnGrid);
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+    card.addEventListener('dragover', handleDragOver);
+    card.addEventListener('drop', handleDropOnGrid);
+  });
+}
+
+function handleDragStart(e) {
+  draggedElement = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', this.dataset.id);
+  trashBin.classList.remove('translate-y-full');
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+  draggedElement = null;
+  trashBin.classList.add('translate-y-full');
+  trashBin.classList.remove('drag-over');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (draggedElement && draggedElement !== this) {
+    const rect = this.getBoundingClientRect();
+    const next = (e.clientY - rect.top) / rect.height > 0.5;
+    if (next) customerGrid.insertBefore(draggedElement, this.nextSibling);
+    else customerGrid.insertBefore(draggedElement, this);
+  }
+}
+
+function handleDropOnGrid(e) {
+  e.preventDefault();
+  updateCustomerOrder();
+}
+
+function handleTrashDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; trashBin.classList.add('drag-over'); }
+function handleTrashDragLeave(e) { trashBin.classList.remove('drag-over'); }
+
+function handleTrashDrop(e) {
+  e.preventDefault();
+  const customerId = e.dataTransfer.getData('text/plain');
+  trashBin.classList.remove('drag-over');
+  const index = customers.findIndex(c => String(c.id) === String(customerId));
+  if (index > -1) {
+    lastDeletedCustomer = customers[index];
+    trashedCustomers.push(lastDeletedCustomer);
+    customers.splice(index,1);
+    saveData(); renderCustomers(); updateTrashCount(); showUndo();
+  }
+}
+
+function updateCustomerOrder() {
+  const newOrderIds = [...customerGrid.querySelectorAll('.customer-card')].map(card => card.dataset.id);
+  customers.sort((a,b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
+  saveData();
+}
+
+/* ====================
+   Trash UI
+   ==================== */
+function showUndo() {
+  if (undoTimeout) clearTimeout(undoTimeout);
+  undoMessage.textContent = `已將「${lastDeletedCustomer.name}」移至垃圾桶`;
+  undoBar.classList.remove('translate-y-20','opacity-0');
+  undoTimeout = setTimeout(() => { undoBar.classList.add('translate-y-20','opacity-0'); lastDeletedCustomer = null; }, 5000);
+}
+
+function handleUndo() {
+  if (undoTimeout) clearTimeout(undoTimeout);
+  undoBar.classList.add('translate-y-20','opacity-0');
+  if (lastDeletedCustomer) {
+    const idx = trashedCustomers.findIndex(c => c.id === lastDeletedCustomer.id);
+    if (idx > -1) trashedCustomers.splice(idx,1);
+    customers.unshift(lastDeletedCustomer);
+    lastDeletedCustomer = null;
+    saveData(); renderCustomers(); updateTrashCount();
+  }
+}
+
+function updateTrashCount() {
+  if (trashedCustomers.length > 0) {
+    trashCount.textContent = trashedCustomers.length;
+    trashCount.classList.remove('hidden');
+  } else {
+    trashCount.classList.add('hidden');
+  }
+}
+
+function openTrashModal() { renderTrashList(); showModal('trash-modal'); }
+
+function renderTrashList() {
+  const list = $('#trash-list');
+  list.innerHTML = '';
+  if (trashedCustomers.length === 0) {
+    $('#no-trash').classList.remove('hidden');
+  } else {
+    $('#no-trash').classList.add('hidden');
+    trashedCustomers.forEach(customer => {
+      const item = document.createElement('div');
+      item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border';
+      item.innerHTML = `
+        <div>
+          <p class="font-medium text-gray-800">${escapeHtml(customer.name)}</p>
+          <p class="text-sm text-gray-500">${escapeHtml(customer.phone)}</p>
+        </div>
+        <div class="flex space-x-2">
+          <button data-id="${customer.id}" class="restore-btn p-2 rounded-full text-green-600 hover:bg-green-100" title="復原"><svg class="w-5 h-5"><use href="#icon-restore"></use></svg></button>
+          <button data-id="${customer.id}" class="perm-delete-btn p-2 rounded-full text-red-600 hover:bg-red-100" title="永久刪除"><svg class="w-5 h-5"><use href="#icon-trash"></use></svg></button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    list.querySelectorAll('.restore-btn').forEach(btn => btn.addEventListener('click', restoreCustomer));
+    list.querySelectorAll('.perm-delete-btn').forEach(btn => btn.addEventListener('click', deleteCustomerPermanently));
+  }
+}
+
+function restoreCustomer(e) {
+  const customerId = e.currentTarget.dataset.id;
+  const index = trashedCustomers.findIndex(c => String(c.id) === String(customerId));
+  if (index > -1) {
+    const customer = trashedCustomers.splice(index,1)[0];
+    customers.push(customer);
+    saveData(); renderCustomers(); renderTrashList(); updateTrashCount();
+  }
+}
+
+function deleteCustomerPermanently(e) {
+  const customerId = e.currentTarget.dataset.id;
+  const index = trashedCustomers.findIndex(c => String(c.id) === String(customerId));
+  if (index > -1) {
+    trashedCustomers.splice(index,1);
+    saveData(); renderTrashList(); updateTrashCount();
+  }
+}
+
+/* ====================
+   Add / Edit form
+   ==================== */
+function openAddModal() {
+  editingCustomerId = null;
+  customerForm.reset();
+  notesEditor.innerHTML = '';
+  const ei = document.querySelector('#expiry-issue'); if (ei) ei.value = '';
+  $('#expiry-date-display').textContent = '-';
+  modalTitle.textContent = '新增客戶';
+  callLogSection.classList.add('hidden');
+  showModal('customer-modal');
+}
+
+function openEditModal(customerId) {
+  editingCustomerId = customerId;
+  const customer = customers.find(c => String(c.id) === String(customerId));
+  if (!customer) return;
+  modalTitle.textContent = '編輯客戶';
+  $('#name').value = customer.name || '';
+  $('#phone').value = customer.phone || '';
+  // 移除: $('#customer-id').value = customer.customerId || '';
+  $('#dob').value = customer.dob || '';
+  $('#address').value = customer.address || '';
+  $('#child-name').value = customer.childName || '';
+  document.querySelectorAll('.form-version').forEach(cb => cb.checked = (customer.versions || []).includes(cb.value));
+  $('#start-issue-version').value = customer.startIssueVersion || '';
+  $('#start-issue').value = customer.startIssue || '';
+  // 移除: $('#subscription-years').value = customer.subscriptionYears || '0';
+  notesEditor.innerHTML = customer.notes || '';
+  const ei = document.querySelector('#expiry-issue'); if (ei) ei.value = (customer.expiryIssue != null ? customer.expiryIssue : '');
+  calculateExpiryDate();
+  callLogSection.classList.remove('hidden');
+  renderCallLogs(customer.callLogs);
+  showModal('customer-modal');
+}
+
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const name = $('#name').value.trim();
+  const phone = $('#phone').value.trim();
+  if (!name || !phone) { showAlert("「名字」和「電話」是必填欄位。"); return; }
+  const duplicate = customers.find(c => c.phone === phone && String(c.id) !== String(editingCustomerId));
+  if (duplicate) { showAlert(`電話號碼 ${phone} 已存在於客戶「${duplicate.name}」的資料中，請勿重複。`, "資料重複"); return; }
+
+  let existingCallLogs = [];
+  if (editingCustomerId) {
+    const existingCustomer = customers.find(c => String(c.id) === String(editingCustomerId));
+    if (existingCustomer) existingCallLogs = existingCustomer.callLogs || [];
+  }
+
+  const customerData = {
+    id: editingCustomerId ? Number(editingCustomerId) : Date.now(),
+    name: name,
+    phone: phone,
+    childName: $('#child-name').value.trim(),
+    // 移除: customerId: $('#customer-id').value,
+    dob: $('#dob').value,
+    address: $('#address').value,
+    versions: [...document.querySelectorAll('.form-version:checked')].map(cb => cb.value),
+    startIssueVersion: $('#start-issue-version').value,
+    startIssue: $('#start-issue').value,
+    // 移除: subscriptionYears: $('#subscription-years').value,
     
-    <!-- 5. 復原刪除提示 (Undo Snackbar) (Feature 10) -->
-    <div id="undo-bar" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 transform translate-y-20 opacity-0 z-50">
-        <p id="undo-message" class="mr-4">已將客戶移至垃圾桶</p>
-        <button id="undo-btn" class="font-bold text-indigo-400 hover:text-indigo-300">復原</button>
-    </div>
-    
-    <!-- 6. 自訂提示視窗 (Alert Modal) -->
-    <div id="alert-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('alert-modal')">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm" onclick="event.stopPropagation()">
-            <div class="p-6 text-center">
-                <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-alert"></use></svg>
-                </div>
-                <h3 id="alert-title" class="text-lg font-medium text-gray-900 mb-2">錯誤</h3>
-                <p id="alert-message" class="text-sm text-gray-600 mb-6">發生了一個錯誤。</p>
-                <button class="w-full px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="hideModal('alert-modal')">
-                    確定
-                </button>
-            </div>
-        </div>
-    </div>
+    // 新增：到期期數
+    expiryIssue: (function(){ 
+      const v = document.querySelector('#expiry-issue') ? document.querySelector('#expiry-issue').value : ''; 
+      return (v === '' || v === null) ? null : Number(v); 
+    })(),
+    notes: notesEditor.innerHTML,
+    callLogs: existingCallLogs
+  };
+  // 計算並儲存提醒用的期數（依版本預設或全域月數換算）
+  try {
+    const monthsOverride = localStorage.getItem('crm_reminder_months');
+    if (customerData.expiryIssue != null && customerData.startIssueVersion) {
+      customerData.remindIssue = computeReminderIssue(customerData.startIssueVersion, customerData.expiryIssue, monthsOverride);
+    } else {
+      customerData.remindIssue = null; // 清除提醒期數如果沒有到期期數
+    }
+  } catch(e) { console.warn('compute remindIssue failed', e); }
 
-    <!-- 7. 全螢幕載入中 (用於 OCR) -->
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden">
-         <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
-            <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-gray-700">AI 讀取中...</span>
-         </div>
-    </div>
 
-    <!-- (新功能) 8. 新增通話記錄 彈出視窗 (Modal) -->
-    <div id="call-log-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('call-log-modal')">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
-            <form id="call-log-form" class="p-6 space-y-4">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">新增通話記錄</h2>
-                <div>
-                    <label for="call-log-date" class="block text-sm font-medium text-gray-700">日期</label>
-                    <input type="date" id="call-log-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="call-log-follow-up" class="block text-sm font-medium text-gray-700">下次追蹤時間 (可選)</label>
-                    <input type="date" id="call-log-follow-up" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="call-log-notes" class="block text-sm font-medium text-gray-700">備註</label>
-                    <textarea id="call-log-notes" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                </div>
-                <div class="flex justify-end space-x-3 pt-4">
-                    <button type="button" class="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300" onclick="hideModal('call-log-modal')">
-                        取消
-                    </button>
-                    <button type="submit" class="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700">
-                        儲存記錄
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+  if (editingCustomerId) {
+    const index = customers.findIndex(c => String(c.id) === String(editingCustomerId));
+    if (index > -1) customers[index] = customerData;
+  } else {
+    customers.unshift(customerData);
+  }
 
-    <!-- (新功能) 9. 追蹤提醒 彈出視窗 (Modal) -->
-    <div id="follow-up-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4 hidden" onclick="hideModal('follow-up-modal')">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
-            <div class="p-6">
-                 <div class="flex items-center space-x-3 mb-4">
-                     <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                     </div>
-                    <h3 class="text-lg font-medium text-gray-900">今日追蹤提醒</h3>
-                 </div>
-                <div id="follow-up-list" class="text-sm text-gray-600 mb-6 max-h-60 overflow-y-auto space-y-2">
-                    <!-- 提醒列表 -->
-                </div>
-                <button class="w-full px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700" onclick="hideModal('follow-up-modal')">
-                    我知道了
-                </button>
-            </div>
-        </div>
-    </div>
+  saveData();
+  renderCustomers();
+  hideModal('customer-modal');
+}
 
-    <!-- 
-    ========================================================
-    == 應用程式 JAVASCRIPT
-    ========================================================
-    -->
-    <script type="module">
-        // --- 狀態管理 ---
-        let customers = [];
-        let trashedCustomers = [];
-        let currentPassword = null;
-        let loggedIn = false;
-        let draggedElement = null; // 儲存被拖曳的元素
-        let editingCustomerId = null; // 正在編輯的客戶 ID
-        let lastDeletedCustomer = null; // 用於復原
-        let undoTimeout = null;
+/* ====================
+   Call log handlers
+   ==================== */
+function openCallLogModal() {
+  callLogForm.reset();
+  $('#call-log-date').value = new Date().toISOString().split('T')[0];
+  showModal('call-log-modal');
+}
 
-        // --- 常數定義 ---
-        
-        // (Feature 5) 期數計算基準
-        const BASE_ISSUES = {
-            '60107': 154, // 學前
-            '60108': 549, // 初階
-            '60109': 534  // 進階
-        };
-        const BASE_DATES = {
-            '60107': new Date('2025-10-01T00:00:00Z'),
-            '60108': new Date('2025-10-01T00:00:00Z'),
-            '60109': new Date('2025-10-01T00:00:00Z')
-        };
-        
-        // (Feature 4) 版本顏色
-        const VERSION_COLORS = {
-            '60107': '#FFFBEB', // 淺米 (bg-amber-50)
-            '60108': '#F0FDF4', // 淺綠 (bg-green-50)
-            '60109': '#F5F3FF'  // 淺紫 (bg-indigo-50)
-        };
+function handleCallLogSubmit(e) {
+  e.preventDefault();
+  if (!editingCustomerId) return;
+  const customer = customers.find(c => String(c.id) === String(editingCustomerId));
+  if (!customer) return;
+  if (!customer.callLogs) customer.callLogs = [];
+  const newLog = { date: $('#call-log-date').value, followUp: $('#call-log-follow-up').value, notes: $('#call-log-notes').value };
+  customer.callLogs.push(newLog);
+  saveData(); renderCallLogs(customer.callLogs); hideModal('call-log-modal');
+}
 
-        // --- DOM 元素快取 ---
-        const $ = (selector) => document.querySelector(selector);
-        
-        const loginScreen = $('#login-screen');
-        const appScreen = $('#app-screen');
-        const loginForm = $('#login-form');
-        const passwordInput = $('#password-input');
-        const passwordConfirm = $('#password-confirm');
-        const loginMessage = $('#login-message');
-        const loginTitle = $('#login-title');
-        const loginButton = $('#login-button');
-        const loginError = $('#login-error');
-        
-        const customerGrid = $('#customer-grid');
-        const noCustomersMsg = $('#no-customers');
-        const searchBar = $('#search-bar');
-        
-        const trashBin = $('#trash-bin');
-        const openTrashBtn = $('#open-trash-btn');
-        const trashCount = $('#trash-count');
-        
-        const customerModal = $('#customer-modal');
-        const modalTitle = $('#modal-title');
-        const customerForm = $('#customer-form');
-        
-        const trashModal = $('#trash-modal');
-        const trashList = $('#trash-list');
-        const noTrashMsg = $('#no-trash');
+/* ====================
+   Search
+   ==================== */
+function handleSearch() { renderCustomers(); }
 
-        const undoBar = $('#undo-bar');
-        const undoBtn = $('#undo-btn');
-        const undoMessage = $('#undo-message');
-        
-        const notesEditor = $('#notes');
-        const highlightToolbar = $('#highlight-toolbar');
-        
-        const ocrFileInput = $('#ocr-file-input');
-        const ocrStatus = $('#ocr-status');
-        const loadingOverlay = $('#loading-overlay');
-        
-        // (新功能) 通話記錄 DOM
-        const callLogSection = $('#call-log-section');
-        const addCallLogBtn = $('#add-call-log-btn');
-        const callLogList = $('#call-log-list');
-        const noCallLogs = $('#no-call-logs');
-        const callLogForm = $('#call-log-form');
+/* ====================
+   OCR (placeholder)
+   ==================== */
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const base64Data = reader.result.split(',')[1];
+    triggerOCR(base64Data);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = null;
+}
 
-        // --- PWA 功能 (動態產生 Manifest 和 Service Worker) ---
+async function triggerOCR(base64ImageData) {
+  loadingOverlay.classList.remove('hidden');
+  ocrStatus.classList.remove('hidden');
+  ocrStatus.textContent = '正在辨識圖片中的文字...';
+  try {
+    // 模擬延遲與輸出，請依需求替換為實際 API 呼叫（後端代理）
+    await new Promise(r => setTimeout(r, 800));
+    const text = '（模擬）圖片文字內容';
+    notesEditor.innerHTML += (notesEditor.innerHTML ? '<br><br>' : '') + `--- 圖片辨識結果 ---<br>${escapeHtml(text).replace(/\n/g,'<br>')}`;
+    ocrStatus.textContent = '文字辨識成功！已附加到備註。';
+  } catch (err) {
+    ocrStatus.textContent = `辨識失敗: ${err.message || err}`;
+    showAlert(`辨識失敗: ${err.message || err}`, 'AI 錯誤');
+  } finally {
+    setTimeout(()=> loadingOverlay.classList.add('hidden'), 400);
+  }
+}
 
-        /**
-         * 產生 PWA Manifest Data URI 並注入
-         * 這樣才能讓 iPhone "加入主畫面"
-         */
-        function generateManifestDataUri() {
-            const manifest = {
-                "name": "客戶資料管理",
-                "short_name": "客戶管理",
-                "description": "一個簡易的客戶資料管理應用程式",
-                "start_url": location.pathname, // 使用目前的路徑
-                "display": "standalone",
-                "orientation": "portrait",
-                "background_color": "#f3f4f6",
-                "theme_color": "#4f46e5",
-                "icons": [
-                    { "src": "https://placehold.co/192x192/4f46e5/FFFFFF?text=CRM&font=inter", "type": "image/png", "sizes": "192x192" },
-                    { "src": "https://placehold.co/512x512/4f46e5/FFFFFF?text=CRM&font=inter", "type": "image/png", "sizes": "512x512" },
-                    { "src": "https://placehold.co/180x180/4f46e5/FFFFFF?text=CRM&font=inter", "type": "image/png", "sizes": "180x180", "purpose": "apple-touch-icon" }
-                ]
-            };
-            
-            try {
-                // 處理 UTF-8 字符
-                const manifestString = JSON.stringify(manifest);
-                const manifestBase64 = btoa(unescape(encodeURIComponent(manifestString)));
-                const dataUri = `data:application/json;base64,${manifestBase64}`;
-                $('link[rel="manifest"]').setAttribute('href', dataUri);
-            } catch (e) {
-                console.error("無法建立 Manifest Data URI:", e);
-            }
+/* ====================
+   Utilities
+   ==================== */
+function escapeHtml(unsafe) {
+  if (unsafe === null || unsafe === undefined) return '';
+  return String(unsafe).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+}
+
+/* ====================
+   Export / Import (JSON)
+   ==================== */
+/**
+ * Export customers (all fields, including childName and callLogs) to JSON file.
+ */
+function exportCustomersToJson() {
+  // Combine customers + trashed if you want; here export only active customers.
+  const data = JSON.stringify(customers, (key, value) => {
+    // 過濾掉已移除的欄位，防止匯出舊資料中可能存在的無用欄位
+    if (key === 'customerId' || key === 'subscriptionYears') return undefined;
+    return value;
+  }, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const filename = `customers_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Import JSON file and merge into existing customers:
+ * - if phone exists (exact match) -> overwrite existing record (keep id unless incoming has id)
+ * - else -> add as new record (use incoming id or Date.now())
+ */
+function importCustomersFromJsonFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!Array.isArray(imported)) throw new Error('匯入檔案格式錯誤（應為 JSON 陣列）');
+      let added = 0, updated = 0;
+      imported.forEach(item => {
+        if (!item || !item.phone) return;
+        const phone = String(item.phone).trim();
+        const existIdx = customers.findIndex(c => String(c.phone).trim() === phone);
+
+        // 過濾掉匯入資料中可能存在的舊欄位
+        const cleanItem = {...item};
+        delete cleanItem.customerId;
+        delete cleanItem.subscriptionYears;
+
+        if (existIdx > -1) {
+          // overwrite existing: keep existing id unless imported item has a valid id and user wants to preserve (we adopt incoming id if present)
+          const keepId = cleanItem.id ? cleanItem.id : customers[existIdx].id;
+          customers[existIdx] = { ...cleanItem, id: keepId };
+          updated++;
+        } else {
+          const newId = cleanItem.id ? cleanItem.id : Date.now() + Math.floor(Math.random()*1000);
+          customers.push({ ...cleanItem, id: newId });
+          added++;
         }
-
-        /**
-         * 註冊一個基本的 Service Worker 用於離線快取
-         * 這也是 PWA 的必要條件
-         */
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    const CACHE_NAME = 'crm-pwa-cache-v1';
-                    const urlsToCache = [
-                        '${location.pathname}', // 快取主 HTML 檔案
-                        'https://cdn.tailwindcss.com' // 快取 Tailwind
-                    ];
-
-                    self.addEventListener('install', event => {
-                        event.waitUntil(
-                            caches.open(CACHE_NAME)
-                                .then(cache => cache.addAll(urlsToCache))
-                        );
-                    });
-
-                    self.addEventListener('fetch', event => {
-                        event.respondWith(
-                            caches.match(event.request)
-                                .then(response => {
-                                    // 從快取中回傳，或發出請求
-                                    return response || fetch(event.request);
-                                })
-                        );
-                    });
-                `;
-                
-                try {
-                    const blob = new Blob([swCode], { type: 'application/javascript' });
-                    const swUrl = URL.createObjectURL(blob);
-                    
-                    navigator.serviceWorker.register(swUrl)
-                        .then(registration => {
-                            console.log('Service Worker 註冊成功:', registration);
-                        })
-                        .catch(error => {
-                            console.log('Service Worker 註冊失敗:', error);
-                        });
-                } catch (e) {
-                    console.error("無法建立 Service Worker Blob:", e);
-                }
-            }
-        }
-
-        // --- 彈出視窗 (Modal & Alert) ---
-        
-        /** 顯示彈出視窗 */
-        window.showModal = (modalId) => {
-            const modal = $(`#${modalId}`);
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                setTimeout(() => modal.classList.add('opacity-100'), 10); // 觸發漸變
-            }
-        };
-
-        /** 隱藏彈出視窗 */
-        window.hideModal = (modalId) => {
-            const modal = $(`#${modalId}`);
-            if (modal) {
-                modal.classList.remove('opacity-100');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                }, 200); // 等待動畫結束
-            }
-        };
-
-        /** 顯示自訂提示 */
-        window.showAlert = (message, title = '提醒') => {
-            $('#alert-title').textContent = title;
-            $('#alert-message').textContent = message;
-            showModal('alert-modal');
-        };
-        
-        // --- 驗證與登入 (Auth) ---
-        
-        /**
-         * 初始化驗證
-         */
-        function initAuth() {
-            currentPassword = localStorage.getItem('crm_password');
-            if (currentPassword) {
-                // 已設定密碼，顯示登入
-                loginTitle.textContent = '請登入';
-                loginMessage.textContent = '請輸入您的 6 位數密碼';
-                passwordConfirm.classList.add('hidden');
-                loginButton.textContent = '登入';
-            } else {
-                // 首次使用，顯示設定
-                loginTitle.textContent = '設定密碼';
-                loginMessage.textContent = '請設定您的 6 位數密碼';
-                passwordConfirm.classList.remove('hidden');
-                loginButton.textContent = '設定密碼';
-            }
-            loginError.classList.add('hidden');
-            
-            // 自動聚焦在 iPhone 上可能無效，但值得一試
-            passwordInput.focus(); 
-        }
-
-        /**
-         * 處理登入/設定表單
-         */
-        function handleLoginSubmit(e) {
-            e.preventDefault();
-            loginError.classList.add('hidden');
-            const pass = passwordInput.value;
-
-            if (currentPassword) {
-                // 登入
-                if (pass === currentPassword) {
-                    loggedIn = true;
-                    loginScreen.classList.add('hidden');
-                    appScreen.classList.remove('hidden');
-                    loadData(); // 登入成功後才載入資料
-                } else {
-                    loginError.textContent = '密碼錯誤，請重試。';
-                    loginError.classList.remove('hidden');
-                    passwordInput.value = '';
-                }
-            } else {
-                // 設定密碼
-                const confirmPass = passwordConfirm.value;
-                if (pass.length !== 6) {
-                    loginError.textContent = '密碼必須為 6 位數字。';
-                    loginError.classList.remove('hidden');
-                    return;
-                }
-                if (pass !== confirmPass) {
-                    loginError.textContent = '兩次輸入的密碼不一致。';
-                    loginError.classList.remove('hidden');
-                    return;
-                }
-                
-                // 儲存密碼 (注意: 這裡為了簡單起見直接儲存，真實應用應使用雜湊)
-                localStorage.setItem('crm_password', pass);
-                currentPassword = pass;
-                
-                // 模擬登入
-                loggedIn = true;
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
-                loadData();
-            }
-        }
-        
-        // --- 資料儲存 (localStorage) ---
-        
-        /** 載入資料 */
-        function loadData() {
-            if (!loggedIn) return;
-            try {
-                customers = JSON.parse(localStorage.getItem('crm_customers_order')) || [];
-                trashedCustomers = JSON.parse(localStorage.getItem('crm_trashed_customers')) || [];
-            } catch (e) {
-                console.error("載入資料失敗:", e);
-                customers = [];
-                trashedCustomers = [];
-            }
-            renderCustomers();
-            updateTrashCount();
-            checkFollowUps(); // (新功能) 檢查追蹤
-        }
-        
-        /** 儲存資料 */
-        function saveData() {
-            if (!loggedIn) return;
-            try {
-                // 儲存客戶陣列 (包含順序)
-                localStorage.setItem('crm_customers_order', JSON.stringify(customers));
-                localStorage.setItem('crm_trashed_customers', JSON.stringify(trashedCustomers));
-            } catch (e) {
-                console.error("儲存資料失敗:", e);
-                showAlert("儲存資料時發生錯誤，您的變更可能不會被保留。", "儲存失敗");
-            }
-        }
-
-        // --- 期數與日期計算 (Feature 5, 6, 7) ---
-
-        /**
-         * (Feature 5) 根據版本和日期，計算出是第幾期
-         * @param {string} version - '60107', '60108', '60109'
-         * @param {Date} targetDate - 目標日期
-         * @returns {number} 期數
-         */
-        function getIssueFromDate(version, targetDate) {
-            const baseDate = BASE_DATES[version];
-            const baseIssue = BASE_ISSUES[version];
-            
-            // 計算月份差異
-            const diffMonths = (targetDate.getFullYear() - baseDate.getFullYear()) * 12 + (targetDate.getMonth() - baseDate.getMonth());
-
-            if (version === '60107') {
-                // 學前版 (每月1期)
-                return baseIssue + diffMonths;
-            } else if (version === '60108' || version === '60109') {
-                // 初階版 / 進階版 (每月2期)
-                let issuesFromMonths = diffMonths * 2;
-                let dayAdjustment = (targetDate.getDate() >= 15) ? 1 : 0;
-                
-                // 處理剛好在 1 號的情況
-                if (targetDate.getDate() === 1) dayAdjustment = 0;
-                
-                return baseIssue + issuesFromMonths + dayAdjustment;
-            }
-            return 0;
-        }
-
-        /**
-         * (Feature 6) 根據版本和期數，反推出開始日期 (一律算該期第一天)
-         * @param {string} version - '60107', '60108', '60109'
-         * @param {number} issueNum - 期數
-         * @returns {Date} 開始日期
-         */
-        function getDateFromIssue(version, issueNum) {
-            const baseDate = new Date(BASE_DATES[version].getTime());
-            const baseIssue = BASE_ISSUES[version];
-            const diffIssues = issueNum - baseIssue;
-
-            if (version === '60107') {
-                // 學前版
-                baseDate.setMonth(baseDate.getMonth() + diffIssues);
-                baseDate.setDate(1); // 固定為1號
-                return baseDate;
-            } else if (version === '60108' || version === '60109') {
-                // 初階 / 進階
-                const monthsToAdd = Math.floor(diffIssues / 2);
-                const day = (diffIssues % 2 === 0) ? 1 : 15;
-                
-                baseDate.setMonth(baseDate.getMonth() + monthsToAdd);
-                baseDate.setDate(day);
-                return baseDate;
-            }
-            return new Date();
-        }
-
-        /**
-         * (Feature 6) 計算到期日
-         * @returns {Date|null}
-         */
-        function calculateExpiryDate() {
-            const version = $('#start-issue-version').value;
-            const issue = parseInt($('#start-issue').value, 10);
-            const years = parseFloat($('#subscription-years').value);
-
-            if (!version || isNaN(issue) || isNaN(years) || years === 0) {
-                $('#expiry-date-display').textContent = '-';
-                return null;
-            }
-
-            try {
-                const startDate = getDateFromIssue(version, issue);
-                const expiryDate = new Date(startDate.getTime());
-                
-                // 加上訂閱月數
-                expiryDate.setMonth(expiryDate.getMonth() + (years * 12));
-                
-                // 格式化日期
-                const yyyy = expiryDate.getFullYear();
-                const mm = String(expiryDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(expiryDate.getDate()).padStart(2, '0');
-                
-                $('#expiry-date-display').textContent = `${yyyy}/${mm}/${dd}`;
-                return expiryDate;
-            } catch (e) {
-                console.error("計算到期日失敗:", e);
-                $('#expiry-date-display').textContent = '計算錯誤';
-                return null;
-            }
-        }
-        
-        /**
-         * (Feature 7) 檢查是否需要到期提醒
-         * @param {Date} expiryDate - 到期日
-         * @returns {boolean}
-         */
-        function isExpiryWarning(expiryDate) {
-            if (!expiryDate) return false;
-            
-            const now = new Date();
-            const fiveMonthsFromNow = new Date();
-            fiveMonthsFromNow.setMonth(now.getMonth() + 5);
-
-            // 如果到期日在未來5個月內，且尚未到期
-            return expiryDate <= fiveMonthsFromNow && expiryDate > now;
-        }
-
-        // (新功能) 檢查今日追蹤
-        function checkFollowUps() {
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            let reminders = [];
-            
-            customers.forEach(customer => {
-                if (customer.callLogs && customer.callLogs.length > 0) {
-                    customer.callLogs.forEach(log => {
-                        if (log.followUp === today) {
-                            reminders.push({
-                                name: customer.name,
-                                notes: log.notes
-                            });
-                        }
-                    });
-                }
-            });
-
-            if (reminders.length > 0) {
-                const followUpList = $('#follow-up-list');
-                followUpList.innerHTML = '';
-                reminders.forEach(r => {
-                    const item = document.createElement('div');
-                    item.className = 'p-3 bg-gray-50 rounded-md border';
-                    item.innerHTML = `<p class="font-semibold text-gray-800">${r.name}</p><p class="text-gray-600 whitespace-pre-wrap">${r.notes || '無備註'}</p>`;
-                    followUpList.appendChild(item);
-                });
-                showModal('follow-up-modal');
-            }
-        }
-
-        // (新功能) 渲染通話記錄列表
-        function renderCallLogs(logs) {
-            callLogList.innerHTML = ''; // 清空
-            
-            if (!logs || logs.length === 0) {
-                callLogList.appendChild(noCallLogs); // noCallLogs 是一個 DOM 元素, 所以會被移動
-                noCallLogs.classList.remove('hidden');
-            } else {
-                noCallLogs.classList.add('hidden');
-                // 排序，最新的在最上面
-                const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                sortedLogs.forEach(log => {
-                    const item = document.createElement('div');
-                    item.className = 'p-3 bg-white rounded-md border shadow-sm';
-                    item.innerHTML = `
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="font-medium text-gray-800">${log.date}</span>
-                            ${log.followUp ? `<span class="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">追蹤: ${log.followUp}</span>` : ''}
-                        </div>
-                        <p class="text-sm text-gray-700 whitespace-pre-wrap">${log.notes || '無備註'}</p>
-                    `;
-                    callLogList.appendChild(item);
-                });
-            }
-        }
-
-
-        // --- 客戶卡片渲染 (Render) ---
-        
-        /**
-         * (Feature 4) 取得卡片背景顏色
-         */
-        function getCardBackground(versions) {
-            const activeColors = versions.map(v => VERSION_COLORS[v]).filter(Boolean);
-            
-            if (activeColors.length === 0) return 'background-color: #ffffff;'; // 修正: 回傳 CSS 樣式
-            if (activeColors.length === 1) return `background-color: ${activeColors[0]};`;
-            
-            if (activeColors.length === 2) {
-                return `background: linear-gradient(90deg, ${activeColors[0]} 50%, ${activeColors[1]} 50%);`;
-            }
-            if (activeColors.length === 3) {
-                return `background: linear-gradient(90deg, ${activeColors[0]} 33.3%, ${activeColors[1]} 33.3% 66.6%, ${activeColors[2]} 66.6%);`;
-            }
-            return 'background-color: #ffffff;'; // 修正: 回傳 CSS 樣式
-        }
-
-        /**
-         * 渲染客戶列表
-         * (Feature 8) 包含搜尋功能
-         */
-        function renderCustomers() {
-            if (!loggedIn) return;
-            
-            customerGrid.innerHTML = ''; // 清空
-            const filterText = searchBar.value.toLowerCase();
-            
-            const filteredCustomers = customers.filter(c => {
-                // 搜尋所有欄位
-                const allData = [c.name, c.phone, c.address, c.customerId, c.dob, c.notes].join(' ').toLowerCase();
-                return allData.includes(filterText);
-            });
-
-            if (filteredCustomers.length === 0) {
-                noCustomersMsg.classList.remove('hidden');
-            } else {
-                noCustomersMsg.classList.add('hidden');
-                filteredCustomers.forEach(customer => {
-                    customerGrid.appendChild(createCustomerCard(customer));
-                });
-            }
-            
-            // 重新綁定拖曳事件 (因為元素是新建立的)
-            addDragDropListeners();
-        }
-
-        /**
-         * 建立單張客戶卡片
-         */
-        function createCustomerCard(customer) {
-            const card = document.createElement('div');
-            card.className = 'customer-card p-4 rounded-lg shadow-md cursor-move transition-all duration-200';
-            card.setAttribute('draggable', true);
-            card.dataset.id = customer.id;
-            
-            // (Feature 4) 設定背景色
-            card.setAttribute('style', getCardBackground(customer.versions)); // 修正: 使用 setAttribute
-
-            let expiryDate = null;
-            if (customer.startIssueVersion && customer.startIssue && customer.subscriptionYears) {
-                expiryDate = getDateFromIssue(customer.startIssueVersion, customer.startIssue);
-                expiryDate.setMonth(expiryDate.getMonth() + (parseFloat(customer.subscriptionYears) * 12));
-            }
-            
-            // (Feature 7) 到期提醒
-            let warningHtml = '';
-            if (expiryDate && isExpiryWarning(expiryDate)) {
-                warningHtml = `<span class="block text-sm font-bold text-pink-600 bg-pink-100 px-2 py-1 rounded-full mb-2">即將到期</span>`;
-                card.classList.add('border-2', 'border-pink-500', 'ring-2', 'ring-pink-200');
-            }
-
-            card.innerHTML = `
-                ${warningHtml}
-                <h3 class="text-lg font-bold text-gray-800 truncate">${customer.name}</h3>
-                <p class="text-sm text-gray-600 truncate">${customer.phone}</p>
-                <p class="text-xs text-gray-500 mt-1 truncate">${customer.address || '&nbsp;'}</p>
-            `;
-            
-            // 點擊卡片以編輯
-            card.addEventListener('click', (e) => {
-                e.stopPropagation(); // 避免觸發拖曳
-                openEditModal(customer.id);
-            });
-            
-            return card;
-        }
-        
-        // --- 拖放功能 (Feature 1) ---
-
-        function addDragDropListeners() {
-            const cards = document.querySelectorAll('.customer-card');
-            cards.forEach(card => {
-                card.addEventListener('dragstart', handleDragStart);
-                card.addEventListener('dragend', handleDragEnd);
-                card.addEventListener('dragover', handleDragOver);
-                card.addEventListener('drop', handleDropOnGrid);
-            });
-        }
-        
-        function handleDragStart(e) {
-            draggedElement = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', this.dataset.id);
-            
-            // 顯示垃圾桶
-            trashBin.classList.remove('translate-y-full');
-        }
-
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            draggedElement = null;
-            
-            // 隱藏垃圾桶
-            trashBin.classList.add('translate-y-full');
-            trashBin.classList.remove('drag-over');
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            
-            // (Feature 1) 拖曳排序
-            if (draggedElement && draggedElement !== this) {
-                const rect = this.getBoundingClientRect();
-                const next = (e.clientY - rect.top) / rect.height > 0.5;
-                
-                if (next) {
-                    customerGrid.insertBefore(draggedElement, this.nextSibling);
-                } else {
-                    customerGrid.insertBefore(draggedElement, this);
-                }
-            }
-        }
-
-        function handleDropOnGrid(e) {
-            e.preventDefault();
-            // 儲存新的順序
-            updateCustomerOrder();
-        }
-
-        function handleTrashDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            trashBin.classList.add('drag-over');
-        }
-
-        function handleTrashDragLeave(e) {
-            trashBin.classList.remove('drag-over');
-        }
-
-        function handleTrashDrop(e) {
-            e.preventDefault();
-            const customerId = e.dataTransfer.getData('text/plain');
-            trashBin.classList.remove('drag-over');
-            
-            // (Feature 10) 刪除客戶 (移至垃圾桶)
-            const index = customers.findIndex(c => c.id == customerId);
-            if (index > -1) {
-                lastDeletedCustomer = customers[index];
-                trashedCustomers.push(lastDeletedCustomer);
-                customers.splice(index, 1);
-                
-                saveData();
-                renderCustomers();
-                updateTrashCount();
-                showUndo();
-            }
-        }
-        
-        /** 更新客戶順序 */
-        function updateCustomerOrder() {
-            const newOrderIds = [...customerGrid.querySelectorAll('.customer-card')].map(card => card.dataset.id);
-            
-            // 根據 ID 重新排序 `customers` 陣列
-            customers.sort((a, b) => {
-                return newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id));
-            });
-            
-            saveData();
-        }
-
-        // --- 垃圾桶 & 復原 (Feature 10) ---
-
-        /** 顯示復原提示 */
-        function showUndo() {
-            if (undoTimeout) clearTimeout(undoTimeout);
-            
-            undoMessage.textContent = `已將「${lastDeletedCustomer.name}」移至垃圾桶`;
-            undoBar.classList.remove('translate-y-20', 'opacity-0');
-            
-            undoTimeout = setTimeout(() => {
-                undoBar.classList.add('translate-y-20', 'opacity-0');
-                lastDeletedCustomer = null;
-            }, 5000); // 5 秒後自動隱藏
-        }
-        
-        /** 處理復原 */
-        function handleUndo() {
-            if (undoTimeout) clearTimeout(undoTimeout);
-            undoBar.classList.add('translate-y-20', 'opacity-0');
-            
-            if (lastDeletedCustomer) {
-                // 從垃圾桶移回
-                const index = trashedCustomers.findIndex(c => c.id === lastDeletedCustomer.id);
-                if (index > -1) {
-                    trashedCustomers.splice(index, 1);
-                }
-                
-                // 加回客戶列表 (加到最前面)
-                customers.unshift(lastDeletedCustomer);
-                
-                lastDeletedCustomer = null;
-                saveData();
-                renderCustomers();
-                updateTrashCount();
-            }
-        }
-
-        /** 更新垃圾桶計數 */
-        function updateTrashCount() {
-            if (trashedCustomers.length > 0) {
-                trashCount.textContent = trashedCustomers.length;
-                trashCount.classList.remove('hidden');
-            } else {
-                trashCount.classList.add('hidden');
-            }
-        }
-        
-        /** 開啟垃圾桶 Modal */
-        function openTrashModal() {
-            renderTrashList();
-            showModal('trash-modal');
-        }
-
-        /** 渲染垃圾桶列表 */
-        function renderTrashList() {
-            trashList.innerHTML = '';
-            if (trashedCustomers.length === 0) {
-                noTrashMsg.classList.remove('hidden');
-            } else {
-                noTrashMsg.classList.add('hidden');
-                trashedCustomers.forEach(customer => {
-                    const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border';
-                    item.innerHTML = `
-                        <div>
-                            <p class="font-medium text-gray-800">${customer.name}</p>
-                            <p class="text-sm text-gray-500">${customer.phone}</p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button data-id="${customer.id}" class="restore-btn p-2 rounded-full text-green-600 hover:bg-green-100">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-restore"></use></svg>
-                            </button>
-                            <button data-id="${customer.id}" class="perm-delete-btn p-2 rounded-full text-red-600 hover:bg-red-100">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
-                            </button>
-                        </div>
-                    `;
-                    trashList.appendChild(item);
-                });
-                
-                // 綁定按鈕事件
-                trashList.querySelectorAll('.restore-btn').forEach(btn => btn.addEventListener('click', restoreCustomer));
-                trashList.querySelectorAll('.perm-delete-btn').forEach(btn => btn.addEventListener('click', deleteCustomerPermanently));
-            }
-        }
-
-        /** 復原客戶 */
-        function restoreCustomer(e) {
-            const customerId = e.currentTarget.dataset.id;
-            const index = trashedCustomers.findIndex(c => c.id == customerId);
-            if (index > -1) {
-                const customer = trashedCustomers.splice(index, 1)[0];
-                customers.push(customer); // 加到列表最後
-                saveData();
-                renderCustomers();
-                renderTrashList();
-                updateTrashCount();
-            }
-        }
-        
-        /** 永久刪除 */
-        function deleteCustomerPermanently(e) {
-            const customerId = e.currentTarget.dataset.id;
-            // 這裡可以加一個確認視窗
-            const index = trashedCustomers.findIndex(c => c.id == customerId);
-            if (index > -1) {
-                trashedCustomers.splice(index, 1);
-                saveData();
-                renderTrashList();
-                updateTrashCount();
-            }
-        }
-
-        // --- 新增/編輯 Modal (Feature 2, 3) ---
-        
-        /** 開啟新增 Modal */
-        function openAddModal() {
-            editingCustomerId = null;
-            customerForm.reset();
-            notesEditor.innerHTML = ''; // 清空備註
-            $('#expiry-date-display').textContent = '-';
-            modalTitle.textContent = '新增客戶';
-            callLogSection.classList.add('hidden'); // (新功能) 隱藏通話記錄
-            showModal('customer-modal');
-        }
-
-        /** 開啟編輯 Modal */
-        function openEditModal(customerId) {
-            editingCustomerId = customerId;
-            const customer = customers.find(c => c.id == customerId);
-            if (!customer) return;
-
-            modalTitle.textContent = '編輯客戶';
-            
-            // 填充表單
-            $('#name').value = customer.name;
-            $('#phone').value = customer.phone;
-            $('#customer-id').value = customer.customerId || '';
-            $('#dob').value = customer.dob || ''; // (Feature 3) 直接顯示文字
-            $('#address').value = customer.address || '';
-            
-            // (Feature 4) 填充版本
-            document.querySelectorAll('.form-version').forEach(cb => {
-                cb.checked = customer.versions.includes(cb.value);
-            });
-
-            // (Feature 6) 填充訂閱
-            $('#start-issue-version').value = customer.startIssueVersion || '';
-            $('#start-issue').value = customer.startIssue || '';
-            $('#subscription-years').value = customer.subscriptionYears || '0';
-            
-            notesEditor.innerHTML = customer.notes || ''; // 填充備註
-            
-            calculateExpiryDate(); // 重新計算一次
-            
-            // (新功能) 顯示並渲染通話記錄
-            callLogSection.classList.remove('hidden');
-            renderCallLogs(customer.callLogs);
-            
-            showModal('customer-modal');
-        }
-
-        /** 處理表單提交 (新增/編輯) */
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            
-            const name = $('#name').value;
-            const phone = $('#phone').value;
-            
-            if (!name || !phone) {
-                showAlert("「名字」和「電話」是必填欄位。");
-                return;
-            }
-
-            // (Feature 3) 檢查電話是否重複
-            const duplicate = customers.find(c => c.phone === phone && c.id != editingCustomerId);
-            if (duplicate) {
-                showAlert(`電話號碼 ${phone} 已存在於客戶「${duplicate.name}」的資料中，請勿重複。`, "資料重複");
-                return;
-            }
-            
-            // (新功能) 保存舊的通話記錄 (僅在編輯時)
-            let existingCallLogs = [];
-            if (editingCustomerId) {
-                const existingCustomer = customers.find(c => c.id == editingCustomerId);
-                if (existingCustomer) {
-                    existingCallLogs = existingCustomer.callLogs || [];
-                }
-            }
-            
-            const customerData = {
-                id: editingCustomerId ? Number(editingCustomerId) : Date.now(),
-                name: name,
-                phone: phone,
-                customerId: $('#customer-id').value,
-                dob: $('#dob').value,
-                address: $('#address').value,
-                versions: [...document.querySelectorAll('.form-version:checked')].map(cb => cb.value),
-                startIssueVersion: $('#start-issue-version').value,
-                startIssue: $('#start-issue').value,
-                subscriptionYears: $('#subscription-years').value,
-                notes: notesEditor.innerHTML,
-                callLogs: existingCallLogs // (新功能)
-            };
-
-            if (editingCustomerId) {
-                // 編輯
-                const index = customers.findIndex(c => c.id == editingCustomerId);
-                if (index > -1) {
-                    customers[index] = customerData;
-                }
-            } else {
-                // 新增 (加到最前面)
-                customers.unshift(customerData);
-            }
-            
-            saveData();
-            renderCustomers();
-            hideModal('customer-modal');
-        }
-
-        // (新功能) 開啟新增通話記錄 Modal
-        function openCallLogModal() {
-            callLogForm.reset();
-            // 預設當日
-            $('#call-log-date').value = new Date().toISOString().split('T')[0];
-            showModal('call-log-modal');
-        }
-
-        // (新功能) 儲存通話記錄
-        function handleCallLogSubmit(e) {
-            e.preventDefault();
-            if (!editingCustomerId) return;
-            
-            const customer = customers.find(c => c.id == editingCustomerId);
-            if (!customer) return;
-
-            if (!customer.callLogs) {
-                customer.callLogs = [];
-            }
-            
-            const newLog = {
-                date: $('#call-log-date').value,
-                followUp: $('#call-log-follow-up').value,
-                notes: $('#call-log-notes').value
-            };
-            
-            customer.callLogs.push(newLog);
-            
-            saveData();
-            renderCallLogs(customer.callLogs);
-            hideModal('call-log-modal');
-        }
-
-        // --- 搜尋 (Feature 8) ---
-        function handleSearch() {
-            renderCustomers();
-        }
-
-        // --- 拍照轉文字 (Feature 9, 使用 Gemini API) ---
-
-        /**
-         * 處理圖片上傳
-         */
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64Data = reader.result.split(',')[1];
-                triggerOCR(base64Data);
-            };
-            reader.readAsDataURL(file);
-            
-            // 清空 input 以便下次上傳同名檔案
-            event.target.value = null; 
-        }
-
-        /**
-         * 呼叫 Gemini API 進行 OCR
-         * @param {string} base64ImageData
-         */
-        async function triggerOCR(base64ImageData) {
-            loadingOverlay.classList.remove('hidden');
-            ocrStatus.classList.remove('hidden');
-            ocrStatus.textContent = '正在辨識圖片中的文字...';
-
-            const apiKey = ""; // Canvas 會自動填入
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [
-                    {
-                        parts: [
-                            { text: "請從這張圖片中提取所有文字，並盡可能保持排版。如果圖片模糊不清，請回覆「無法辨識」。" },
-                            {
-                                inlineData: {
-                                    mimeType: "image/jpeg",
-                                    data: base64ImageData
-                                }
-                            }
-                        ]
-                    }
-                ]
-            };
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API 請求失敗: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (text) {
-                    // 將辨識出的文字附加到備註欄位
-                    notesEditor.innerHTML += (notesEditor.innerHTML ? '<br><br>' : '') + `--- 圖片辨識結果 ---<br>${text.replace(/\n/g, '<br>')}`;
-                    ocrStatus.textContent = '文字辨識成功！已附加到備註。';
-                } else {
-                    throw new Error('無法從 API 回應中解析文字');
-                }
-
-            } catch (error) {
-                console.error("OCR 失敗:", error);
-                ocrStatus.textContent = `辨識失敗: ${error.message}`;
-                showAlert(`辨識失敗: ${error.message}`, "AI 錯誤");
-            } finally {
-                loadingOverlay.classList.add('hidden');
-                // 3 秒後隱藏狀態
-                setTimeout(() => ocrStatus.classList.add('hidden'), 3000);
-            }
-        }
-        
-        // --- 文字高亮 (Feature 11) ---
-
-        /**
-         * 設定高亮工具列
-         */
-        function setupHighlighting() {
-            // 在編輯器中選取文字時顯示工具列
-            notesEditor.addEventListener('mouseup', () => {
-                const selection = window.getSelection();
-                if (selection && !selection.isCollapsed) {
-                    highlightToolbar.classList.remove('hidden');
-                } else {
-                    highlightToolbar.classList.add('hidden');
-                }
-            });
-            
-            notesEditor.addEventListener('blur', () => {
-                // 稍微延遲隱藏，以便點擊按鈕
-                setTimeout(() => highlightToolbar.classList.add('hidden'), 200);
-            });
-            
-            // 綁定高亮按鈕
-            highlightToolbar.querySelectorAll('.highlight-btn').forEach(btn => {
-                btn.addEventListener('mousedown', (e) => {
-                    e.preventDefault(); // 防止編輯器失去焦點
-                    applyHighlight(btn.dataset.color);
-                });
-            });
-        }
-        
-        /**
-         * 應用高亮
-         * @param {string} color - 色碼 (e.g., #fef08a)
-         */
-        function applyHighlight(color) {
-            // 使用 document.execCommand (雖然舊，但在 contenteditable 中最簡單)
-            // 'hiliteColor' 在某些瀏覽器可能不被支援，'backColor' 更通用
-            document.execCommand('styleWithCSS', false, true);
-            if (color === 'transparent') {
-                document.execCommand('removeFormat', false, 'backColor');
-            } else {
-                document.execCommand('backColor', false, color);
-            }
-            highlightToolbar.classList.add('hidden');
-        }
-
-        // --- 應用程式初始化 ---
-        
-        function initApp() {
-            // 1. PWA 設定
-            generateManifestDataUri();
-            registerServiceWorker();
-
-            // 2. 驗證
-            initAuth();
-            loginForm.addEventListener('submit', handleLoginSubmit);
-
-            // 3. 頂部按鈕
-            $('#add-customer-btn').addEventListener('click', openAddModal);
-            openTrashBtn.addEventListener('click', openTrashModal);
-            
-            // 4. 搜尋
-            searchBar.addEventListener('input', handleSearch);
-            
-            // 5. 拖放 (垃圾桶)
-            trashBin.addEventListener('dragover', handleTrashDragOver);
-            trashBin.addEventListener('dragleave', handleTrashDragLeave);
-            trashBin.addEventListener('drop', handleTrashDrop);
-
-            // 6. 復原
-            undoBtn.addEventListener('click', handleUndo);
-
-            // 7. Modal 表單
-            customerForm.addEventListener('submit', handleFormSubmit);
-            
-            // 8. 日期計算 (即時)
-            $('#start-issue-version').addEventListener('change', calculateExpiryDate);
-            $('#start-issue').addEventListener('input', calculateExpiryDate);
-            $('#subscription-years').addEventListener('change', calculateExpiryDate);
-            
-            // 9. OCR
-            $('#ocr-camera-btn').addEventListener('click', () => ocrFileInput.click());
-            ocrFileInput.addEventListener('change', handleImageUpload);
-            // TODO: 手寫功能 (目前暫不實作)
-            $('#ocr-handwriting-btn').addEventListener('click', () => {
-                showAlert("手寫功能正在開發中。", "功能預告");
-            });
-
-            // 10. 文字高亮
-            setupHighlighting();
-            
-            // 11. (新功能) 通話記錄
-            addCallLogBtn.addEventListener('click', openCallLogModal);
-            callLogForm.addEventListener('submit', handleCallLogSubmit);
-            
-            // 12. (Feature 3) 出生年月日格式
-            // 這裡可以加入 input masking，但為了簡單起見，暫時省略
-        }
-        
-        // 啟動應用程式
-        window.addEventListener('load', initApp);
-        
-    </script>
+      });
+      saveData();
+      renderCustomers();
+      showAlert(`匯入完成：新增 ${added} 筆，更新 ${updated} 筆`, '匯入完成');
+    } catch (err) {
+      console.error('import error', err);
+      showAlert(`匯入失敗：${err.message}`, '匯入錯誤');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ====================
+   Event bindings
+   ==================== */
+loginForm.addEventListener('submit', handleLoginSubmit);
+customerForm.addEventListener('submit', handleFormSubmit);
+$('#add-customer-btn').addEventListener('click', openAddModal);
+openTrashBtn.addEventListener('click', openTrashModal);
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+
+trashBin.addEventListener('dragover', handleTrashDragOver);
+trashBin.addEventListener('dragleave', handleTrashDragLeave);
+trashBin.addEventListener('drop', handleTrashDrop);
+
+undoBtn.addEventListener('click', handleUndo);
+
+$('#card-density').addEventListener('input', (e) => {
+  const v = Number(e.target.value) || 4;
+  cardDensityValue.textContent = v;
+  const cols = Math.max(1, Math.min(10, v));
+  // set responsive classes (approximate)
+  customerGrid.className = `grid grid-cols-${cols} sm:grid-cols-${cols} md:grid-cols-${cols} lg:grid-cols-${cols} gap-4`;
+});
+
+searchBar.addEventListener('input', handleSearch);
+
+$('#ocr-camera-btn').addEventListener('click', () => $('#ocr-file-input').click());
+ocrFileInput.addEventListener('change', handleImageUpload);
+
+addCallLogBtn.addEventListener('click', () => {
+  if (!editingCustomerId) { showAlert('請先選擇或編輯一位客戶，再新增通話記錄。'); return; }
+  openCallLogModal();
+});
+callLogForm.addEventListener('submit', handleCallLogSubmit);
+
+/* Export button */
+exportBtn.addEventListener('click', () => {
+  if (!loggedIn) { showAlert('請先登入'); return; }
+  exportCustomersToJson();
+});
+
+/* Import input */
+importInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!confirm('匯入將與現有資料合併（相同電話將覆蓋現有資料）。是否繼續？')) { e.target.value = null; return; }
+  importCustomersFromJsonFile(file);
+  e.target.value = null;
+});
+
+/* Open trash modal via button */
+openTrashBtn.addEventListener('click', openTrashModal);
+
+/* Bind expiry date calculation listener */
+// 移除 #subscription-years 監聽器
+document.querySelectorAll('#start-issue-version, #start-issue, #expiry-issue').forEach(el => {
+    el.addEventListener('input', calculateExpiryDate);
+});
+
+
+/* Initialize PWA, Auth */
+generateManifestDataUri();
+registerServiceWorker();
+initAuth();
+
+/* Load data after login; do not auto-login */
+if (localStorage.getItem('crm_password')) {
+  // nothing, wait for user login
+}
+
+/* Expose openEditModal globally for card click handler */
+window.openEditModal = openEditModal;
+
+/* ====================
+   Initial helpers: render / load
+   ==================== */
+function renderInitial() {
+  // if already logged in (edge case), load data
+  if (localStorage.getItem('crm_password') && loggedIn) loadData();
+}
+renderInitial();
+
+
+
+// === Reminder calculation (by issue) ===
+function computeReminderIssue(version, expiryIssue, monthsOverride) {
+  // Default offsets by version (issues before)
+  const DEFAULT_OFFSET = (version === '60107') ? 5 : 10; // 60108/60109 -> 10
+  if (!version || !Number.isFinite(Number(expiryIssue))) return null;
+
+  const offsetByVersion = DEFAULT_OFFSET;
+
+  // If monthsOverride provided, convert months to issue offset for that version/customer
+  const m = Number(monthsOverride);
+  if (Number.isFinite(m) && m > 0 && typeof getDateFromIssue === 'function' && typeof getIssueFromDate === 'function') {
+    try {
+      const endIssueNum = Number(expiryIssue);
+      const endDate = getDateFromIssue(version, endIssueNum); // date of the expiry issue
+      const remindDate = new Date(endDate.getTime());
+      remindDate.setMonth(remindDate.getMonth() - m);
+      const remindIssue = getIssueFromDate(version, remindDate);
+      return remindIssue;
+    } catch(e) { /* fallback below */ }
+  }
+  // Fallback: fixed offset by version
+  const endIssueNum = Number(expiryIssue);
+  return endIssueNum - offsetByVersion;
+}
+
+</script>
+
+<script>
+
+// === Global reminder months setting ===
+(function(){
+  const input = document.querySelector('#global-reminder-months');
+  const btn = document.querySelector('#save-reminder-months');
+  if (input) {
+    const saved = localStorage.getItem('crm_reminder_months');
+    if (saved !== null) input.value = saved;
+  }
+  if (btn && !btn.__bound) {
+    btn.addEventListener('click', () => {
+      const v = document.querySelector('#global-reminder-months').value;
+      if (v === '' || Number(v) < 0) {
+        localStorage.removeItem('crm_reminder_months');
+        showAlert('已清除全域提醒設定（改用版本預設期數）', '提醒設定');
+      } else {
+        localStorage.setItem('crm_reminder_months', String(Number(v)));
+        showAlert('已儲存全域提醒設定', '提醒設定');
+      }
+    });
+    btn.__bound = true;
+  }
+})();
+
+</script>
 </body>
 </html>
-
-
-
