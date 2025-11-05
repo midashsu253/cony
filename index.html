@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <title>客戶管理（含小朋友名字 + 匯入/匯出）</title>
+    <title>可愛兔兔（含小朋友名字 + 匯入/匯出）</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -64,12 +64,6 @@
         <button id="add-customer-btn" class="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition" title="新增客戶">
           <svg class="w-6 h-6"><use href="#icon-plus"></use></svg>
         </button>
-        <div class="ml-2 flex items-center gap-2">
-          <input type="number" min="0" id="global-reminder-months" placeholder="月數" class="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <button id="save-reminder-months" type="button" class="px-3 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 text-sm">儲存</button>
-        </div>
-
-
         <button id="export-btn" class="p-2 rounded-full text-green-600 hover:bg-green-100 transition" title="匯出 JSON">
           <svg class="w-6 h-6"><use href="#icon-export"></use></svg>
         </button>
@@ -558,7 +552,6 @@ function getDateFromIssue(version, issueNum) {
 function calculateExpiryDate() {
   const version = $('#start-issue-version').value;
   const issue = parseInt($('#start-issue').value, 10);
-  // 移除: const years = parseFloat($('#subscription-years').value);
   const expiryIssue = document.querySelector('#expiry-issue') ? Number(document.querySelector('#expiry-issue').value) : null;
 
   let displayDate = '-';
@@ -571,16 +564,6 @@ function calculateExpiryDate() {
     } catch(e) {
       console.error('calculateExpiryDate error using expiryIssue', e);
     }
-  // 移除訂閱年數的計算邏輯
-  /* } else if (version && Number.isFinite(issue) && Number.isFinite(years) && years > 0) {
-    // 其次使用開始期數 + 訂閱年數計算 (保留原有邏輯，但建議主要使用 expiryIssue)
-    try {
-      const startDate = getDateFromIssue(version, issue);
-      calculatedExpiryDate = new Date(startDate.getTime());
-      calculatedExpiryDate.setMonth(calculatedExpiryDate.getMonth() + (years * 12));
-    } catch(e) {
-      console.error('calculateExpiryDate error using subscriptionYears', e);
-    } */
   }
   
   if (calculatedExpiryDate) {
@@ -917,14 +900,12 @@ function openEditModal(customerId) {
   modalTitle.textContent = '編輯客戶';
   $('#name').value = customer.name || '';
   $('#phone').value = customer.phone || '';
-  // 移除: $('#customer-id').value = customer.customerId || '';
   $('#dob').value = customer.dob || '';
   $('#address').value = customer.address || '';
   $('#child-name').value = customer.childName || '';
   document.querySelectorAll('.form-version').forEach(cb => cb.checked = (customer.versions || []).includes(cb.value));
   $('#start-issue-version').value = customer.startIssueVersion || '';
   $('#start-issue').value = customer.startIssue || '';
-  // 移除: $('#subscription-years').value = customer.subscriptionYears || '0';
   notesEditor.innerHTML = customer.notes || '';
   const ei = document.querySelector('#expiry-issue'); if (ei) ei.value = (customer.expiryIssue != null ? customer.expiryIssue : '');
   calculateExpiryDate();
@@ -952,13 +933,11 @@ function handleFormSubmit(e) {
     name: name,
     phone: phone,
     childName: $('#child-name').value.trim(),
-    // 移除: customerId: $('#customer-id').value,
     dob: $('#dob').value,
     address: $('#address').value,
     versions: [...document.querySelectorAll('.form-version:checked')].map(cb => cb.value),
     startIssueVersion: $('#start-issue-version').value,
     startIssue: $('#start-issue').value,
-    // 移除: subscriptionYears: $('#subscription-years').value,
     
     // 新增：到期期數
     expiryIssue: (function(){ 
@@ -968,11 +947,11 @@ function handleFormSubmit(e) {
     notes: notesEditor.innerHTML,
     callLogs: existingCallLogs
   };
-  // 計算並儲存提醒用的期數（依版本預設或全域月數換算）
+  // 計算並儲存提醒用的期數（依版本預設期數換算：60107-5期前 / 60108/60109-10期前）
   try {
-    const monthsOverride = localStorage.getItem('crm_reminder_months');
     if (customerData.expiryIssue != null && customerData.startIssueVersion) {
-      customerData.remindIssue = computeReminderIssue(customerData.startIssueVersion, customerData.expiryIssue, monthsOverride);
+      // 移除 monthsOverride 參數，直接呼叫簡化後的函式
+      customerData.remindIssue = computeReminderIssue(customerData.startIssueVersion, customerData.expiryIssue);
     } else {
       customerData.remindIssue = null; // 清除提醒期數如果沒有到期期數
     }
@@ -1179,7 +1158,6 @@ importInput.addEventListener('change', (e) => {
 openTrashBtn.addEventListener('click', openTrashModal);
 
 /* Bind expiry date calculation listener */
-// 移除 #subscription-years 監聽器
 document.querySelectorAll('#start-issue-version, #start-issue, #expiry-issue').forEach(el => {
     el.addEventListener('input', calculateExpiryDate);
 });
@@ -1210,56 +1188,17 @@ renderInitial();
 
 
 // === Reminder calculation (by issue) ===
-function computeReminderIssue(version, expiryIssue, monthsOverride) {
+// 提醒期數計算：固定以版本預設值（60107-5期前 / 60108/60109-10期前）
+function computeReminderIssue(version, expiryIssue) {
   // Default offsets by version (issues before)
   const DEFAULT_OFFSET = (version === '60107') ? 5 : 10; // 60108/60109 -> 10
   if (!version || !Number.isFinite(Number(expiryIssue))) return null;
 
-  const offsetByVersion = DEFAULT_OFFSET;
-
-  // If monthsOverride provided, convert months to issue offset for that version/customer
-  const m = Number(monthsOverride);
-  if (Number.isFinite(m) && m > 0 && typeof getDateFromIssue === 'function' && typeof getIssueFromDate === 'function') {
-    try {
-      const endIssueNum = Number(expiryIssue);
-      const endDate = getDateFromIssue(version, endIssueNum); // date of the expiry issue
-      const remindDate = new Date(endDate.getTime());
-      remindDate.setMonth(remindDate.getMonth() - m);
-      const remindIssue = getIssueFromDate(version, remindDate);
-      return remindIssue;
-    } catch(e) { /* fallback below */ }
-  }
-  // Fallback: fixed offset by version
+  const offset = DEFAULT_OFFSET;
   const endIssueNum = Number(expiryIssue);
-  return endIssueNum - offsetByVersion;
+  // 直接使用固定偏移量
+  return endIssueNum - offset;
 }
-
-</script>
-
-<script>
-
-// === Global reminder months setting ===
-(function(){
-  const input = document.querySelector('#global-reminder-months');
-  const btn = document.querySelector('#save-reminder-months');
-  if (input) {
-    const saved = localStorage.getItem('crm_reminder_months');
-    if (saved !== null) input.value = saved;
-  }
-  if (btn && !btn.__bound) {
-    btn.addEventListener('click', () => {
-      const v = document.querySelector('#global-reminder-months').value;
-      if (v === '' || Number(v) < 0) {
-        localStorage.removeItem('crm_reminder_months');
-        showAlert('已清除全域提醒設定（改用版本預設期數）', '提醒設定');
-      } else {
-        localStorage.setItem('crm_reminder_months', String(Number(v)));
-        showAlert('已儲存全域提醒設定', '提醒設定');
-      }
-    });
-    btn.__bound = true;
-  }
-})();
 
 </script>
 </body>
